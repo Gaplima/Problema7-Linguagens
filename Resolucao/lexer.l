@@ -24,24 +24,24 @@
 "elif"                {return(ELSE IF);}
 "and"                 {return(AND);}
 "or"                  {return(OR);}
-";"                   {return(SEMICOLON);}
-","                   {return(COMMA);}
+";"                   {return(yytext[0]);}
+","                   {return(yytext[0]);}
 "%d"                  {return(VALUE);}
 
-"+"                   {return(OP_SUM);}
-"-"                   {return(OP_SUBTRACTION);}
-"*"                   {return(OP_MULTIPLICATION);}
-"/"                   {return(OP_DIVISION);}
-"%"                   {return(OP_MODULE);}
+"+"                   {return(yytext[0]);}
+"-"                   {return(yytext[0]);}
+"*"                   {return(yytext[0]);}
+"/"                   {return(yytext[0]);}
+"%"                   {return(yytext[0]);}
 "++"                  {return(OP_ADD_ONE);}
 "--"                  {return(OP_SUB_ONE);}
 "sizeof"              {return(OP_SIZEOF);}
-">="                  {return(GREATER THAN OR EQUALS);}
-"<="                  {return(LESS THAN OR EQUALS);}
-">"                   {return(GREATER THAN);}
-"<"                   {return(LESS THAN);}
+">="                  {return(GREATER_THAN_OR_EQUALS);}
+"<="                  {return(LESS_THAN_OR_EQUALS);}
+">"                   {return(yytext[0]);}
+"<"                   {return(yytext[0]);}
 "=="                  {return(EQUALS);}
-"="                   {return(ASSIGNMENT);}
+"="                   {return(yytext[0]);}
 
 "int"                 {return(TYPE_INT);}
 "arr[]"               {return(TYPE_ARRAY);}
@@ -49,12 +49,12 @@
 "string"              {return(TYPE_STRING);}
 "float"               {return(TYPE_FLOAT);}
 
-"["                   {return(OPENING SQUARE BRACKETS);}
-"]"                   {return(CLOSING SQUARE BRACKETS);}
-"("                   {return(OPENING PARENTHESIS);}
-")"                   {return(CLOSING PARENTHESIS);}
-"{"                   {return(OPENING CURLY BRACES);}
-"}"                   {return(CLOSING CURLY BRACES);}
+"["                   {return(yytext[0]);}
+"]"                   {return(yytext[0]);}
+"("                   {return(yytext[0]);}
+")"                   {return(yytext[0]);}
+"{"                   {return(yytext[0]);}
+"}"                   {return(yytext[0]);}
 "//".*                {return(COMENTARIO: %s\n", yytext);}
 
 .                     {yyerror("errrrrrooooooooou");}
