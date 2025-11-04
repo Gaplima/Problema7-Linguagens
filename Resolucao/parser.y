@@ -31,6 +31,10 @@
 %token GREATER_THAN_OR_EQUALS LESS_THAN_OR_EQUALS EQUALS
 %token TYPE_INT TYPE_ARRAY TYPE_CHAR TYPE_STRING TYPE_FLOAT
 
+/* ==== Precedência e associatividade ==== */
+%left '+' '-'
+%left '*' '/'
+
 /* Declaração inicial da gramática */
 %%
 program:
