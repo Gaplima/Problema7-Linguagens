@@ -1,0 +1,3 @@
+bison -d -o y.tab.c parser.y
+flex lexer.l
+gcc y.tab.c lex.yy.c -o parser -lfl
