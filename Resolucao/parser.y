@@ -13,13 +13,13 @@
   }
 %}
 
-/* ==== Definição dos tipos usados em yylval ==== */
+/* Definição dos tipos usados em yylval */
 %union {
     int iValue;
     char* sValue;
 }
 
-/* ==== Tokens com e sem valores ==== */
+/* Tokens com e sem valores */
 %token <iValue> NUMBER
 %token <sValue> ID
 
@@ -31,12 +31,12 @@
 %token GREATER_THAN_OR_EQUALS LESS_THAN_OR_EQUALS EQUALS
 %token TYPE_INT TYPE_ARRAY TYPE_CHAR TYPE_STRING TYPE_FLOAT
 
-/* ==== Declaração inicial da gramática ==== */
+/* Declaração inicial da gramática */
 %%
 program:
     stmt_list
     {
-        printf("\n✅ Programa analisado com sucesso!\n");
+        printf("\n Programa analisado com sucesso!\n");
     }
     ;
 
@@ -115,7 +115,7 @@ expr:
 %%
 
 void yyerror(char *msg) {
-    fprintf(stderr, "❌ Erro de sintaxe: %s\n", msg);
+    fprintf(stderr, "Erro de sintaxe: %s\n", msg);
 }
 
 int main(void) {
