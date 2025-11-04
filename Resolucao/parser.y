@@ -5,6 +5,12 @@
 
   void yyerror(char *msg);
   int yylex(void);
+
+  int indent = 0;
+
+  void print_indent() {
+      for (int i = 0; i < indent; i++) printf("  ");
+  }
 %}
 
 /* ==== Definição dos tipos usados em yylval ==== */
@@ -29,6 +35,9 @@
 %%
 program:
     stmt_list
+    {
+        printf("\n✅ Programa analisado com sucesso!\n");
+    }
     ;
 
 stmt_list:
@@ -38,31 +47,79 @@ stmt_list:
 
 stmt:
     WHILE expr DO stmt
+    {
+        print_indent(); printf("→ Estrutura WHILE reconhecida.\n");
+    }
   | IF expr THEN stmt
+    {
+        print_indent(); printf("→ Estrutura IF reconhecida.\n");
+    }
   | IF expr THEN stmt ELSE stmt
-  | BLOCK_BEGIN stmt_list BLOCK_END
+    {
+        print_indent(); printf("→ Estrutura IF-ELSE reconhecida.\n");
+    }
+  | BLOCK_BEGIN
+    {
+        print_indent(); printf("→ Início de bloco BEGIN.\n");
+        indent++;
+    }
+    stmt_list
+    BLOCK_END
+    {
+        indent--;
+        print_indent(); printf("→ Fim de bloco END.\n");
+    }
   | ID ASSIGN expr SEMI
+    {
+        print_indent();
+        printf("→ Atribuição reconhecida: %s := (expressão)\n", $1);
+        free($1);
+    }
   | SEMI
+    {
+        print_indent(); printf("→ Linha vazia.\n");
+    }
   ;
 
 expr:
     expr '+' expr
+    {
+        print_indent(); printf("   Operação: soma.\n");
+    }
   | expr '-' expr
+    {
+        print_indent(); printf("   Operação: subtração.\n");
+    }
   | expr '*' expr
+    {
+        print_indent(); printf("   Operação: multiplicação.\n");
+    }
   | expr '/' expr
+    {
+        print_indent(); printf("   Operação: divisão.\n");
+    }
   | '(' expr ')'
+    {
+        print_indent(); printf("   Expressão entre parênteses.\n");
+    }
   | NUMBER
+    {
+        print_indent(); printf("   Número: %d\n", $1);
+    }
   | ID
+    {
+        print_indent(); printf("   Identificador: %s\n", $1);
+        free($1);
+    }
   ;
 %%
 
 void yyerror(char *msg) {
-    fprintf(stderr, "Erro de sintaxe: %s\n", msg);
+    fprintf(stderr, "❌ Erro de sintaxe: %s\n", msg);
 }
 
 int main(void) {
     printf("Digite código para análise:\n");
     yyparse();
-    printf("Análise concluída com sucesso!\n");
     return 0;
 }
