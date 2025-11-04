@@ -21,7 +21,7 @@
 ":="					        {return ASSIGN;}
 [a-zA-Z][a-zA-Z0-9]*	{yylval.sValue = strdup(yytext); 
                        return ID;}
-"elif"                {return(ELSE IF);}
+"elif"                {return(ELIF);}
 "and"                 {return(AND);}
 "or"                  {return(OR);}
 ";"                   {return(yytext[0]);}
@@ -55,7 +55,6 @@
 ")"                   {return(yytext[0]);}
 "{"                   {return(yytext[0]);}
 "}"                   {return(yytext[0]);}
-"//".*                {return(COMENTARIO: %s\n", yytext);}
 
 .                     {yyerror("errrrrrooooooooou");}
 
