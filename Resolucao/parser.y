@@ -31,10 +31,15 @@
 %token GREATER_THAN_OR_EQUALS LESS_THAN_OR_EQUALS EQUALS
 %token TYPE_INT TYPE_ARRAY TYPE_CHAR TYPE_STRING TYPE_FLOAT
 
+
 /* ==== Precedência e associatividade ==== */
 %left '+' '-'
 %left '*' '/'
 %right POWER
+
+// Menor procedência
+%nonassoc LOWER_THAN_ELSE
+%nonassoc ELSE
 
 /* Declaração inicial da gramática */
 %%
@@ -51,28 +56,25 @@ stmt_list:
   ;
 
 stmt:
-    WHILE expr DO stmt
+    IF expr THEN stmt %prec LOWER_THAN_ELSE
     {
-        print_indent(); printf("→ Estrutura WHILE reconhecida.\n");
-    }
-  | IF expr THEN stmt
-    {
-        print_indent(); printf("→ Estrutura IF reconhecida.\n");
+        print_indent();
+        printf("→ Estrutura IF-THEN reconhecida.\n");
     }
   | IF expr THEN stmt ELSE stmt
     {
-        print_indent(); printf("→ Estrutura IF-ELSE reconhecida.\n");
+        print_indent();
+        printf("→ Estrutura IF-THEN-ELSE reconhecida.\n");
     }
-  | BLOCK_BEGIN
+  | WHILE expr DO stmt
     {
-        print_indent(); printf("→ Início de bloco BEGIN.\n");
-        indent++;
+        print_indent();
+        printf("→ Estrutura WHILE reconhecida.\n");
     }
-    stmt_list
-    BLOCK_END
+  | BLOCK_BEGIN stmt_list BLOCK_END
     {
-        indent--;
-        print_indent(); printf("→ Fim de bloco END.\n");
+        print_indent();
+        printf("→ Bloco BEGIN/END reconhecido.\n");
     }
   | ID ASSIGN expr SEMI
     {
@@ -82,9 +84,11 @@ stmt:
     }
   | SEMI
     {
-        print_indent(); printf("→ Linha vazia.\n");
+        print_indent();
+        printf("→ Linha vazia reconhecida.\n");
     }
   ;
+
 
 expr:
     expr '+' expr
