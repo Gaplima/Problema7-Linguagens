@@ -34,6 +34,7 @@
 /* ==== Precedência e associatividade ==== */
 %left '+' '-'
 %left '*' '/'
+%right POWER
 
 /* Declaração inicial da gramática */
 %%
@@ -101,6 +102,10 @@ expr:
   | expr '/' expr
     {
         print_indent(); printf("   Operação: divisão.\n");
+    }
+  | expr POWER expr
+    {
+      print_indent(); printf("   Operação: potenciação.\n");
     }
   | '(' expr ')'
     {

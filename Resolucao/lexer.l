@@ -33,6 +33,7 @@
 "*"                   {return(yytext[0]);}
 "/"                   {return(yytext[0]);}
 "%"                   {return(yytext[0]);}
+"^"                   {return(POWER);}
 "++"                  {return(OP_ADD_ONE);}
 "--"                  {return(OP_SUB_ONE);}
 "sizeof"              {return(OP_SIZEOF);}
