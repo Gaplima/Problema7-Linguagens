@@ -39,8 +39,8 @@
 "sizeof"              {return(OP_SIZEOF);}
 ">="                  {return(GREATER_THAN_OR_EQUALS);}
 "<="                  {return(LESS_THAN_OR_EQUALS);}
-">"                   {return(yytext[0]);}
-"<"                   {return(yytext[0]);}
+">"                   {return(GREATER_THAN);}
+"<"                   {return(LESS_THAN);}
 "=="                  {return(EQUALS);}
 "="                   {return(yytext[0]);}
 

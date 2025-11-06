@@ -29,10 +29,12 @@
 %token AND OR
 %token OP_ADD_ONE OP_SUB_ONE OP_SIZEOF
 %token GREATER_THAN_OR_EQUALS LESS_THAN_OR_EQUALS EQUALS
+%token GREATER_THAN LESS_THAN
 %token TYPE_INT TYPE_ARRAY TYPE_CHAR TYPE_STRING TYPE_FLOAT
 
 
 /* ==== Precedência e associatividade ==== */
+%left GREATER_THAN LESS_THAN GREATER_THAN_OR_EQUALS LESS_THAN_OR_EQUALS EQUALS
 %left '+' '-'
 %left '*' '/'
 %right POWER
@@ -91,7 +93,27 @@ stmt:
 
 
 expr:
-    expr '+' expr
+    expr LESS_THAN expr
+    {
+        print_indent(); printf("   Operação: Comparação (menor que).\n");
+    }
+  | expr GREATER_THAN expr
+    {
+        print_indent(); printf("   Operação: Comparação (maior que).\n");
+    }
+  | expr LESS_THAN_OR_EQUALS expr
+    {
+        print_indent(); printf("   Operação: Comparação (menor ou igual).\n");
+    }
+  | expr GREATER_THAN_OR_EQUALS expr
+    {
+        print_indent(); printf("   Operação: Comparação (maior ou igual).\n");
+    }
+  | expr EQUALS expr
+    {
+        print_indent(); printf("   Operação: Comparação (igualdade).\n");
+    }
+  | expr '+' expr
     {
         print_indent(); printf("   Operação: soma.\n");
     }
@@ -109,7 +131,7 @@ expr:
     }
   | expr POWER expr
     {
-      print_indent(); printf("   Operação: potenciação.\n");
+        print_indent(); printf("   Operação: potenciação.\n");
     }
   | '(' expr ')'
     {
@@ -125,6 +147,7 @@ expr:
         free($1);
     }
   ;
+
 %%
 
 void yyerror(char *msg) {
