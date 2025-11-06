@@ -1,0 +1,18 @@
+begin
+  if left < right then
+  begin
+    pivot := left;
+    i := left;
+    j := right;
+
+    while i <= j do
+    begin
+      if i <= j then
+      begin
+        temp := i;
+        i := i + 1;
+        j := j - 1;
+      end;
+    end;
+  end;
+end;
