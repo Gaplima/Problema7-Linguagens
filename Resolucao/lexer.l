@@ -19,15 +19,12 @@
 "else"      			    {return(ELSE);}
 ";"      				      {return(SEMI);}
 ":="					        {return ASSIGN;}
-[a-zA-Z][a-zA-Z0-9]*	{yylval.sValue = strdup(yytext); 
-                       return ID;}
+
 "elif"                {return(ELIF);}
 "and"                 {return(AND);}
 "or"                  {return(OR);}
-";"                   {return(yytext[0]);}
 ","                   {return(yytext[0]);}
 "%d"                  {return(VALUE);}
-
 "+"                   {return(yytext[0]);}
 "-"                   {return(yytext[0]);}
 "*"                   {return(yytext[0]);}
@@ -56,7 +53,7 @@
 ")"                   {return(yytext[0]);}
 "{"                   {return(yytext[0]);}
 "}"                   {return(yytext[0]);}
-
+[a-zA-Z][a-zA-Z0-9]*	{yylval.sValue = strdup(yytext); return ID;}
 .                     {yyerror("errrrrrooooooooou");}
 
 %%
