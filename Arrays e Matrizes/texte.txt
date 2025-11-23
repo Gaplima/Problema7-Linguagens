@@ -1,0 +1,36 @@
+int i;
+int j;
+int contador;
+
+/* Declaração de Array estilo Python */
+int meuVetor = [10];
+
+/* Declaração de Matriz estilo Python */
+int minhaMatriz = [5][5];
+
+/* Inicialização de variáveis */
+i := 0;
+contador := 0;
+
+/* Teste 1: Loop para preencher o Vetor */
+while i < 10 do begin
+    meuVetor[i] := i * 10;
+    i := i + 1;
+end
+
+/* Teste 2: Loops aninhados para preencher a Matriz */
+i := 0;
+while i < 5 do begin
+    j := 0;
+    while j < 5 do begin
+        minhaMatriz[i][j] := i + j;
+        j := j + 1;
+    end
+    i := i + 1;
+end
+
+/* Teste 3: Usando valores do array em lógica condicional */
+if meuVetor[2] > 15 then
+    contador := meuVetor[2] + 1;
+else
+    contador := 0;
