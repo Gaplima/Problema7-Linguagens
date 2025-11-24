@@ -5,8 +5,7 @@
   #include "symbol_table.h"
   #include "ast.h"
 
-  void generate_c_code(ASTNode *root);
-
+  void generate_c_code(ASTNode *root, char *filename);
   int yylex(void);
   void yyerror(char *msg);
 
@@ -33,7 +32,7 @@
 
 %token WHILE DO IF THEN ELSE ELIF FOR TO
 %token BLOCK_BEGIN BLOCK_END
-%token ASSIGN SEMI RETURN
+%token ASSIGN SEMI RETURN PRINT
 %token AND OR POWER
 %token OP_ADD_ONE OP_SUB_ONE OP_SIZEOF
 %token GREATER_THAN_OR_EQUALS LESS_THAN_OR_EQUALS EQUALS
@@ -44,7 +43,8 @@
 
 /* Tipos dos Nós */
 %type <node> program stmt_list stmt expr
-%type <node> globals global_item func_def declaration
+%type <node> globals global_item func_def 
+%type <node> declarations declaration
 %type <node> params param_list param
 %type <node> args arg_list
 %type <typeValue> type 
@@ -64,14 +64,11 @@
 /* ========================================================================== */
 
 program:
-    /* Agora aceitamos globais (vars ou funcs) misturados, seguidos do main */
     globals stmt_list
     {
-        /* Cria um bloco "Main" para os comandos soltos */
         ASTNode *mainBlock = create_node(NODE_BLOCK);
         mainBlock->left = $2; 
         
-        /* A raiz é a sequência de funções/globais + o main */
         if ($1 != NULL) {
             root = create_seq($1, mainBlock);
         } else {
@@ -85,12 +82,9 @@ program:
     }
     ;
 
-/* Lista mista de Funções e Declarações Globais */
 globals:
     globals global_item 
     { 
-        /* Se o item gerou um nó (é função), adiciona na árvore. 
-           Se for variável (NULL), ignora na árvore mas mantém na tabela. */
         if ($2 != NULL) {
             if ($1 == NULL) $$ = $2;
             else $$ = create_seq($1, $2);
@@ -102,45 +96,48 @@ globals:
   ;
 
 global_item:
-    declaration { $$ = NULL; }     /* Declaração de variável não gera nó aqui */
-  | func_def    { $$ = $1; }       /* Definição de função gera nó */
+    declaration { $$ = $1; }
+  | func_def    { $$ = $1; }       
   ;
 
 /* ========================================================================== */
-/* DECLARAÇÕES DE VARIÁVEIS (Reutilizável para globais e locais)              */
+/* DECLARAÇÕES                                                                */
 /* ========================================================================== */
 
 declarations:
     declarations declaration
-  | /* vazio */
+    {
+        if ($2 != NULL) {
+            if ($1 == NULL) $$ = $2;
+            else $$ = create_seq($1, $2);
+        } else {
+            $$ = $1;
+        }
+    }
+  | /* vazio */ { $$ = NULL; }
   ;
 
 declaration:
     type ID SEMI
     {
-        /* Instala na tabela (Lógica existente) */
         Symbol *s = lookup_symbol($2);
         if (s != NULL && s->scope == current_scope) {
              printf("ERRO: %s duplicado\n", $2); exit(1); 
         }
         install_symbol($2, $1, KIND_SCALAR, 0, 0);
-        
-        /* GERA O NÓ NA ÁRVORE (Novo!) */
         $$ = create_decl($2, $1, KIND_SCALAR, 0, 0);
         free($2); 
     }
   | type ID '=' '[' NUMBER ']' SEMI
     {
-        /* ... install_symbol ... */
         install_symbol($2, $1, KIND_ARRAY, $5, 0);
-        $$ = create_decl($2, $1, KIND_ARRAY, $5, 0); // Novo
+        $$ = create_decl($2, $1, KIND_ARRAY, $5, 0);
         free($2);
     }
   | type ID '=' '[' NUMBER ']' '[' NUMBER ']' SEMI
     {
-        /* ... install_symbol ... */
         install_symbol($2, $1, KIND_MATRIX, $5, $8);
-        $$ = create_decl($2, $1, KIND_MATRIX, $5, $8); // Novo
+        $$ = create_decl($2, $1, KIND_MATRIX, $5, $8);
         free($2);
     }
   ;
@@ -156,28 +153,20 @@ type:
 /* FUNÇÕES                                                                    */
 /* ========================================================================== */
 
-/* Correção do Conflito: Ação { ... } movida para DEPOIS do '(' */
 func_def:
     type ID '(' 
     { 
-        /* Agora temos certeza que é função (vimos o parêntese). */
         install_symbol($2, $1, KIND_FUNCTION, 0, 0);
         enter_scope(); 
     }
     params ')' BLOCK_BEGIN declarations stmt_list BLOCK_END
     {
-        /* CUIDADO COM ÍNDICES: 
-           $1: type
-           $2: ID
-           $3: '('
-           $4: { Ação Mid-Rule }
-           $5: params
-           $6: ')'
-           $7: BLOCK_BEGIN
-           $8: declarations
-           $9: stmt_list 
-        */
-        $$ = create_func_def($2, $1, $5, $9);
+        ASTNode *body = $9;
+        if ($8 != NULL) {
+            body = create_seq($8, $9);
+        }
+
+        $$ = create_func_def($2, $1, $5, body);
         
         exit_scope();
         free($2);
@@ -204,7 +193,7 @@ param:
     ;
 
 /* ========================================================================== */
-/* COMANDOS E EXPRESSÕES (Sem alterações estruturais)                         */
+/* COMANDOS E EXPRESSÕES                                                      */
 /* ========================================================================== */
 
 stmt_list:
@@ -252,6 +241,7 @@ stmt:
         $$ = create_assign_idx($1, $3, $6, $9);
         free($1);
     }
+  | PRINT '(' args ')' SEMI { $$ = create_print($3); }
   | RETURN expr SEMI { $$ = create_return($2); }
   | SEMI { $$ = NULL; }
   ;
@@ -259,6 +249,9 @@ stmt:
 expr:
     expr LESS_THAN expr    { $$ = create_bin_op("<", $1, $3); $$->dataType = TYPE_INT; }
   | expr GREATER_THAN expr { $$ = create_bin_op(">", $1, $3); $$->dataType = TYPE_INT; }
+  | expr LESS_THAN_OR_EQUALS expr { $$ = create_bin_op("<=", $1, $3); $$->dataType = TYPE_INT; }
+  | expr GREATER_THAN_OR_EQUALS expr { $$ = create_bin_op(">=", $1, $3); $$->dataType = TYPE_INT; }
+  | expr EQUALS expr { $$ = create_bin_op("==", $1, $3); $$->dataType = TYPE_INT; }
   | expr '+' expr 
     { 
         if ($1->dataType != $3->dataType) printf("ERRO: Tipos incompativeis soma\n");
@@ -318,13 +311,29 @@ void yyerror(char *msg) {
     fprintf(stderr, "Erro de sintaxe: %s\n", msg);
 }
 
-int main(void) {
+extern FILE *yyin;
+
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        printf("Uso: %s <arquivo_entrada>\n", argv[0]);
+        return 1;
+    }
+
+    FILE *myfile = fopen(argv[1], "r");
+    if (!myfile) {
+        printf("Erro ao abrir arquivo: %s\n", argv[1]);
+        return 1;
+    }
+
+    yyin = myfile;
     init_symbol_table();
-    printf("Compilando...\n");
+    
     yyparse();
     
     if (root != NULL) {
-        generate_c_code(root); // <--- AQUI
+        generate_c_code(root, argv[1]);
     }
+    
+    fclose(myfile);
     return 0;
 }

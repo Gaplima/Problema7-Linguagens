@@ -5,32 +5,31 @@
   extern int yyerror (char *msg);
 %}
 
-/* Declara estado exclusivo para comentários */
 %x COMMENT
 
 %%
 
-[ \t\n]               ; /* Ignora espaços e quebras de linha */
+[ \t\n]               ; 
 
-"/*"                  { BEGIN(COMMENT); } /* Entra no modo comentário */
-<COMMENT>"*/"         { BEGIN(INITIAL); } /* Sai do modo comentário */
-<COMMENT>(.|\n)       ; /* Ignora qualquer coisa dentro do comentário */
+"/*"                  { BEGIN(COMMENT); }
+<COMMENT>"*/"         { BEGIN(INITIAL); }
+<COMMENT>(.|\n)       ; 
 
 [0-9]+           	  {yylval.iValue = atoi(yytext); return NUMBER;}
 
-"while"      		  {return(WHILE);}
-"for"             {return(FOR);}
-"to"              {return(TO);}
-"begin"      		  {return(BLOCK_BEGIN);}
-"end"      			  {return(BLOCK_END);}
-"do"      			  {return(DO);}
-"if"      			  {return(IF);}
-"then"      		  {return(THEN);}
-"else"      		  {return(ELSE);}
+"while"      		      {return(WHILE);}
+"for"                 {return(FOR);}
+"to"                  {return(TO);}
+"begin"      		      {return(BLOCK_BEGIN);}
+"end"      			      {return(BLOCK_END);}
+"do"      			      {return(DO);}
+"if"      			      {return(IF);}
+"then"      		      {return(THEN);}
+"else"      		      {return(ELSE);}
 "elif"                {return(ELIF);}
 
 ";"                   {return(SEMI);}
-":="				  {return ASSIGN;}
+":="				          {return ASSIGN;}
 "and"                 {return(AND);}
 "or"                  {return(OR);}
 
@@ -66,6 +65,7 @@
 "{"                   {return(yytext[0]);}
 "}"                   {return(yytext[0]);}
 "return"              {return(RETURN);}
+"echo"                {return(PRINT);}
 
 [a-zA-Z][a-zA-Z0-9]* {yylval.sValue = strdup(yytext); return ID;}
 

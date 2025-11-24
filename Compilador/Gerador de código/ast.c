@@ -55,9 +55,9 @@ ASTNode* create_while(ASTNode *cond, ASTNode *body) {
 ASTNode* create_for(char *varName, ASTNode *start, ASTNode *end, ASTNode *body) {
     ASTNode *node = create_node(NODE_FOR);
     node->strValue = strdup(varName);
-    node->left = start;   // Valor inicial
-    node->right = end;    // Valor final
-    node->extra = body;   // Bloco de comandos
+    node->left = start;
+    node->right = end;
+    node->extra = body;
     return node;
 }
 
@@ -78,22 +78,26 @@ ASTNode* create_seq(ASTNode *stmt1, ASTNode *stmt2) {
     return node;
 }
 
-// Cria nó de LEITURA (acesso)
-ASTNode* create_array_access(char *name, ASTNode *idx1, ASTNode *idx2) {
-    ASTNode *node = create_node(NODE_ARRAY_ACCESS);
-    node->strValue = strdup(name);
-    node->left = idx1;   // Índice 1
-    node->right = idx2;  // Índice 2 (pode ser NULL)
+ASTNode* create_print(ASTNode *args) {
+    ASTNode *node = create_node(NODE_PRINT);
+    node->left = args; 
     return node;
 }
 
-// Cria nó de ESCRITA (atribuição em índice)
+ASTNode* create_array_access(char *name, ASTNode *idx1, ASTNode *idx2) {
+    ASTNode *node = create_node(NODE_ARRAY_ACCESS);
+    node->strValue = strdup(name);
+    node->left = idx1;
+    node->right = idx2;
+    return node;
+}
+
 ASTNode* create_assign_idx(char *name, ASTNode *idx1, ASTNode *idx2, ASTNode *val) {
     ASTNode *node = create_node(NODE_ASSIGN_IDX);
     node->strValue = strdup(name);
-    node->left = idx1;   // Índice 1
-    node->right = idx2;  // Índice 2 (NULL se for vetor)
-    node->extra = val;   // Valor a ser guardado
+    node->left = idx1;
+    node->right = idx2;
+    node->extra = val;
     return node;
 }
 
@@ -101,15 +105,15 @@ ASTNode* create_func_def(char *name, int retType, ASTNode *params, ASTNode *body
     ASTNode *node = create_node(NODE_FUNC_DEF);
     node->strValue = strdup(name);
     node->dataType = retType;
-    node->left = params;  // Lista de Parâmetros
-    node->right = body;   // Corpo da função (Block)
+    node->left = params;
+    node->right = body;
     return node;
 }
 
 ASTNode* create_func_call(char *name, ASTNode *args) {
     ASTNode *node = create_node(NODE_FUNC_CALL);
     node->strValue = strdup(name);
-    node->left = args;    // Lista de Argumentos
+    node->left = args;
     return node;
 }
 
@@ -121,15 +125,15 @@ ASTNode* create_return(ASTNode *expr) {
 
 ASTNode* create_param_list(ASTNode *param, ASTNode *next) {
     ASTNode *node = create_node(NODE_PARAM_LIST);
-    node->left = param;   // O parâmetro atual (VAR)
-    node->right = next;   // O resto da lista
+    node->left = param;
+    node->right = next;
     return node;
 }
 
 ASTNode* create_arg_list(ASTNode *arg, ASTNode *next) {
     ASTNode *node = create_node(NODE_ARG_LIST);
-    node->left = arg;     // Argumento (Expr)
-    node->right = next;   // Resto da lista
+    node->left = arg;
+    node->right = next;
     return node;
 }
 
@@ -143,6 +147,11 @@ void print_ast(ASTNode *node, int level) {
     print_indent(level);
 
     switch (node->type) {
+        case NODE_PRINT:
+            printf("PRINT:\n");
+            print_indent(level+1); printf("Args:\n");
+            print_ast(node->left, level+2);
+            break;
         case NODE_CONST:
             printf("Num: %d\n", node->intValue);
             break;
@@ -209,6 +218,9 @@ void print_ast(ASTNode *node, int level) {
                  print_indent(level+1); printf("Index 2:\n");
                  print_ast(node->right, level+2);
             }
+            print_indent(level+1); printf("Value:\n");
+            print_ast(node->extra, level+2);
+            break; // <--- CORREÇÃO: ADICIONADO BREAK QUE FALTAVA
         case NODE_FUNC_DEF:
             printf("FUNCTION: %s (Type: %d)\n", node->strValue, node->dataType);
             print_indent(level+1); printf("Params:\n");
@@ -234,9 +246,6 @@ void print_ast(ASTNode *node, int level) {
             printf("Arg:\n");
             print_ast(node->left, level+1);
             if(node->right) print_ast(node->right, level);
-            break;
-            print_indent(level+1); printf("Value:\n");
-            print_ast(node->extra, level+2);
             break;
     }
 }

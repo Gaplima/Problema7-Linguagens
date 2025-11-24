@@ -176,45 +176,74 @@ void gen_code(ASTNode *node) {
                 fprintf(f, "]");
             }
             break;
+        case NODE_PRINT:
+            {
+                ASTNode *arg = node->left;
+                
+                // O argumento pode ser uma lista (NODE_ARG_LIST) ou um item único
+                while (arg != NULL) {
+                    // Escreve a chamada formatada corretamente para C
+                    fprintf(f, "printf(\"%%d\\n\", ");
+                    
+                    if (arg->type == NODE_ARG_LIST) {
+                        gen_code(arg->left); // Gera o valor (ex: numeros[i])
+                        arg = arg->right;    // Avança para o próximo
+                    } else {
+                        gen_code(arg);       // Gera o valor único
+                        arg = NULL;          // Encerra
+                    }
+                    
+                    fprintf(f, ");\n"); // Fecha o printf e adiciona o ponto e vírgula!
+                }
+            }
+            break;
     }
 }
 
-void generate_c_code(ASTNode *root) {
-    f = fopen("saida.c", "w");
+/* codegen.c - Substitua a função generate_c_code antiga por esta */
+
+void generate_c_code(ASTNode *root, char *input_filename) {
+    char output_filename[256];
+    
+    // Copia o nome de entrada
+    strncpy(output_filename, input_filename, 250);
+    
+    // Encontra o ponto da extensão
+    char *ext = strrchr(output_filename, '.');
+    if (ext != NULL) {
+        // Substitui a extensão original por .c
+        strcpy(ext, ".c");
+    } else {
+        // Se não tiver extensão, apenas adiciona .c
+        strcat(output_filename, ".c");
+    }
+
+    f = fopen(output_filename, "w");
     if (!f) {
-        printf("Erro ao criar arquivo de saida!\n");
+        printf("Erro ao criar arquivo de saida: %s\n", output_filename);
         return;
     }
 
     fprintf(f, "#include <stdio.h>\n");
     fprintf(f, "\n// Codigo gerado pelo compilador\n\n");
 
-    // A raiz da nossa árvore é uma SEQUÊNCIA: (Globais/Funções) -> (Main Block)
-    // O parser organiza assim: create_seq(Funcoes, MainBlock);
-    
+    // Lógica de geração (igual à anterior)
     if (root->type == NODE_SEQ) {
-        // Parte 1: Gera Globais e Funções
         gen_code(root->left); 
-        
-        // Parte 2: Gera o Main
         fprintf(f, "\nint main() {\n");
-        // O node->right é um NODE_BLOCK contendo as instruções do main
-        // Vamos pegar o conteúdo desse bloco
         if (root->right && root->right->type == NODE_BLOCK) {
-             gen_code(root->right->left); // Gera o conteúdo do bloco
+             gen_code(root->right->left);
         } else {
              gen_code(root->right);
         }
-        
         fprintf(f, "\nreturn 0;\n");
         fprintf(f, "}\n");
     } else {
-        // Caso fallback se só tiver main
         fprintf(f, "int main() {\n");
         gen_code(root);
         fprintf(f, "return 0;\n}\n");
     }
 
     fclose(f);
-    printf("Codigo gerado com sucesso em 'saida.c'!\n");
+    printf("Compilacao concluida! Gerado: '%s'\n", output_filename);
 }
