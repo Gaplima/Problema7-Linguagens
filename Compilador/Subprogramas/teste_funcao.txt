@@ -1,0 +1,22 @@
+/* Declaração Global */
+int globalVar;
+int vetor = [5];
+
+/* Definição de Função */
+int soma(int a, int b) begin
+    int resultado; /* Variável local */
+    resultado := a + b;
+    return resultado;
+end
+
+/* Programa Principal (Main) */
+globalVar := 0;
+vetor[0] := 10;
+
+/* Chamada de função */
+globalVar := soma(vetor[0], 20);
+
+/* Loop usando variável global */
+for globalVar := 0 to 5 do begin
+   vetor[globalVar] := globalVar * 2;
+end
