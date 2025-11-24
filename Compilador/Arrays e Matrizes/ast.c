@@ -68,8 +68,6 @@ ASTNode* create_seq(ASTNode *stmt1, ASTNode *stmt2) {
     return node;
 }
 
-// --- NOVAS FUNÇÕES ---
-
 // Cria nó de LEITURA (acesso)
 ASTNode* create_array_access(char *name, ASTNode *idx1, ASTNode *idx2) {
     ASTNode *node = create_node(NODE_ARRAY_ACCESS);
@@ -88,8 +86,6 @@ ASTNode* create_assign_idx(char *name, ASTNode *idx1, ASTNode *idx2, ASTNode *va
     node->extra = val;   // Valor a ser guardado
     return node;
 }
-
-// --- FIM NOVAS FUNÇÕES ---
 
 void print_indent(int level) {
     for (int i = 0; i < level; i++) printf("  ");
@@ -150,8 +146,6 @@ void print_ast(ASTNode *node, int level) {
             print_ast(node->left, level);
             if (node->right) print_ast(node->right, level); 
             break;
-            
-        // --- NOVOS CASES INTEGRADOS DENTRO DO SWITCH ---
         case NODE_ARRAY_ACCESS:
             printf("Access Array: %s\n", node->strValue);
             print_indent(level+1); printf("Index 1:\n");
