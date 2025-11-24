@@ -30,6 +30,7 @@
 %token <sValue> ID
 
 %token WHILE DO IF THEN ELSE ELIF
+%token FOR TO
 %token BLOCK_BEGIN BLOCK_END
 %token ASSIGN SEMI
 %token AND OR POWER
@@ -158,6 +159,32 @@ stmt:
         }
         $$ = create_assign($1, $3);
         free($1);
+    }
+    /* Loop FOR: for i := 0 to 10 do stmt */
+  | FOR ID ASSIGN expr TO expr DO stmt
+    {
+        Symbol *sym = lookup_symbol($2);
+        
+        // 1. Verifica se a variável existe
+        if (sym == NULL) {
+            printf("ERRO SEMANTICO: Variavel do FOR '%s' nao declarada!\n", $2);
+            exit(1);
+        }
+        
+        // 2. Verifica se é uma variável escalar (não array)
+        if (sym->kind != KIND_SCALAR) {
+            printf("ERRO SEMANTICO: Variavel do FOR '%s' deve ser escalar!\n", $2);
+            exit(1);
+        }
+
+        // 3. Verifica se é INT (opcional, mas recomendado)
+        if (sym->type != TYPE_INT) {
+             printf("ERRO SEMANTICO: Variavel do FOR deve ser inteira!\n");
+             exit(1);
+        }
+
+        $$ = create_for($2, $4, $6, $8);
+        free($2);
     }
 
     /* Atribuição em Array: vetor[i] := 10; */

@@ -52,6 +52,15 @@ ASTNode* create_while(ASTNode *cond, ASTNode *body) {
     return node;
 }
 
+ASTNode* create_for(char *varName, ASTNode *start, ASTNode *end, ASTNode *body) {
+    ASTNode *node = create_node(NODE_FOR);
+    node->strValue = strdup(varName);
+    node->left = start;   // Valor inicial
+    node->right = end;    // Valor final
+    node->extra = body;   // Bloco de comandos
+    return node;
+}
+
 ASTNode* create_seq(ASTNode *stmt1, ASTNode *stmt2) {
     ASTNode *node = create_node(NODE_SEQ);
     node->left = stmt1;
@@ -123,6 +132,15 @@ void print_ast(ASTNode *node, int level) {
             print_ast(node->left, level + 1);
             print_indent(level + 1); printf("Do:\n");
             print_ast(node->right, level + 2);
+            break;
+        case NODE_FOR:
+            printf("FOR Var: %s\n", node->strValue);
+            print_indent(level + 1); printf("Start:\n");
+            print_ast(node->left, level + 2);
+            print_indent(level + 1); printf("To:\n");
+            print_ast(node->right, level + 2);
+            print_indent(level + 1); printf("Do:\n");
+            print_ast(node->extra, level + 2);
             break;
         case NODE_BLOCK:
             printf("BLOCK\n");

@@ -13,6 +13,7 @@ typedef enum {
     NODE_ASSIGN,
     NODE_IF,
     NODE_WHILE,
+    NODE_FOR,
     NODE_BLOCK,
     NODE_BIN_OP,
     NODE_SEQ,
@@ -43,6 +44,7 @@ ASTNode* create_while(ASTNode *cond, ASTNode *body);
 ASTNode* create_seq(ASTNode *stmt1, ASTNode *stmt2);
 ASTNode* create_array_access(char *name, ASTNode *idx1, ASTNode *idx2);
 ASTNode* create_assign_idx(char *name, ASTNode *idx1, ASTNode *idx2, ASTNode *val);
+ASTNode* create_for(char *varName, ASTNode *start, ASTNode *end, ASTNode *body);
 
 void print_ast(ASTNode *node, int level);
 

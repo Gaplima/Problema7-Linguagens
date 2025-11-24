@@ -19,6 +19,8 @@
 [0-9]+           	  {yylval.iValue = atoi(yytext); return NUMBER;}
 
 "while"      		  {return(WHILE);}
+"for"             {return(FOR);}
+"to"              {return(TO);}
 "begin"      		  {return(BLOCK_BEGIN);}
 "end"      			  {return(BLOCK_END);}
 "do"      			  {return(DO);}
