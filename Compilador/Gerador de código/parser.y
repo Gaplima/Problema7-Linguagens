@@ -35,7 +35,7 @@
 
 %token WHILE DO IF THEN ELSE ELIF FOR TO
 %token BLOCK_BEGIN BLOCK_END
-%token ASSIGN SEMI RETURN PRINT
+%token ASSIGN SEMI RETURN PRINT READ
 %token AND OR POWER
 %token OP_ADD_ONE OP_SUB_ONE OP_SIZEOF
 %token GREATER_THAN_OR_EQUALS LESS_THAN_OR_EQUALS EQUALS
@@ -245,6 +245,22 @@ stmt:
         free($1);
     }
   | PRINT '(' args ')' SEMI { $$ = create_print($3); }
+  | READ '(' ID ')' SEMI 
+    {
+        Symbol *sym = lookup_symbol($3);
+        if (!sym) { 
+            printf("ERRO: Tentando ler para variavel '%s' nao declarada.\n", $3); 
+            exit(1); 
+        }
+        if (sym->kind != KIND_SCALAR) {
+            printf("ERRO: 'read' so funciona com variaveis simples (escalares).\n");
+            exit(1);
+        }
+        
+        /* Cria o nó passando o Nome e o TIPO da variável */
+        $$ = create_read($3, sym->type);
+        free($3);
+    }
   | RETURN expr SEMI { $$ = create_return($2); }
   | SEMI { $$ = NULL; }
   ;

@@ -180,6 +180,22 @@ void gen_code(ASTNode *node) {
             }
             break;
 
+        case NODE_READ:
+            if (node->dataType == TYPE_INT) {
+                fprintf(f, "scanf(\"%%d\", &%s);\n", node->strValue);
+            } 
+            else if (node->dataType == TYPE_FLOAT) {
+                fprintf(f, "scanf(\"%%f\", &%s);\n", node->strValue);
+            }
+            else if (node->dataType == TYPE_STRING) {
+                // Aloca memória temporária para a string (segurança básica)
+                // scanf("%s") lê até o primeiro espaço. Para ler linha toda seria gets/fgets.
+                // Vamos usar %s simples por enquanto.
+                fprintf(f, "%s = (char*)malloc(256 * sizeof(char));\n", node->strValue);
+                fprintf(f, "scanf(\"%%255s\", %s);\n", node->strValue); // Sem & para char*
+            }
+            break;
+
         case NODE_PRINT: {
             ASTNode *arg = node->left;
             while (arg != NULL) {
@@ -236,6 +252,7 @@ void generate_c_code(ASTNode *root, char *input_filename) {
     }
 
     fprintf(f, "#include <stdio.h>\n");
+    fprintf(f, "#include <stdlib.h>\n");
     fprintf(f, "\n// Codigo gerado pelo compilador\n\n");
 
     if (root->type == NODE_SEQ) {

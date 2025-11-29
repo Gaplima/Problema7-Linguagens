@@ -1,8 +1,17 @@
+int idade;
+float altura;
 string nome;
-float x;
 
-x := 0.3;
-nome := "Usuario";
-echo ("Bem vindo, ");
+echo ("Digite seu nome:");
+read(nome);
+
+echo ("Digite sua idade:");
+read(idade);
+
+echo ("Digite sua altura:");
+read(altura);
+
+echo ("--- Resultados ---");
 echo (nome);
-echo (x);
+echo (idade);
+echo (altura);

@@ -84,6 +84,13 @@ ASTNode* create_print(ASTNode *args) {
     return node;
 }
 
+ASTNode* create_read(char *varName, int type) {
+    ASTNode *node = create_node(NODE_READ);
+    node->strValue = strdup(varName); // Guarda o nome da variável
+    node->dataType = type;            // Guarda o tipo (INT, FLOAT, STRING)
+    return node;
+}
+
 ASTNode* create_float_const(float val) {
     ASTNode *node = create_node(NODE_CONST);
     node->floatValue = val;

@@ -66,6 +66,7 @@
 "}"                   {return(yytext[0]);}
 "return"              {return(RETURN);}
 "echo"                {return(PRINT);}
+"read"                {return(READ);}
 
 \"[^"\n]*\"  { 
     yylval.sValue = strdup(yytext); 
