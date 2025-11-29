@@ -31,8 +31,8 @@ typedef enum {
 // Estrutura do Nó da Árvore
 typedef struct ASTNode {
     NodeType type;      // Tipo estrutural (se é IF, WHILE, etc)
-    int dataType;       // NOVO: Tipo de dado (TYPE_INT, TYPE_FLOAT, etc - vindo do Bison)
-    
+    int dataType;       // Tipo de dado (TYPE_INT, TYPE_FLOAT, etc - vindo do Bison)
+    float floatValue;
     int intValue;       
     char *strValue;     
     int kind;   // 0=Escalar, 1=Array, 2=Matriz
@@ -53,6 +53,7 @@ ASTNode* create_if(ASTNode *cond, ASTNode *thenStmt, ASTNode *elseStmt);
 ASTNode* create_while(ASTNode *cond, ASTNode *body);
 ASTNode* create_seq(ASTNode *stmt1, ASTNode *stmt2);
 ASTNode* create_print(ASTNode *args);
+ASTNode* create_float_const(float val);
 ASTNode* create_array_access(char *name, ASTNode *idx1, ASTNode *idx2);
 ASTNode* create_assign_idx(char *name, ASTNode *idx1, ASTNode *idx2, ASTNode *val);
 ASTNode* create_for(char *varName, ASTNode *start, ASTNode *end, ASTNode *body);

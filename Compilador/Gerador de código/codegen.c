@@ -1,27 +1,27 @@
 #include <stdio.h>
 #include <string.h>
 #include "ast.h"
+#include "y.tab.h"
 
 // Arquivo de saída global para simplificar
 FILE *f = NULL;
 
 const char* get_type_name(int type) {
-    switch(type) {
-        case 0: return "int";       // TYPE_INT (ajuste conforme seu %token)
-        case 1: return "float";     // TYPE_FLOAT
-        case 2: return "char";      // TYPE_CHAR
-        case 3: return "char*";     // TYPE_STRING
-        default: return "int";
-    }
+    if (type == TYPE_INT) return "int";
+    if (type == TYPE_FLOAT) return "float";
+    if (type == TYPE_CHAR) return "char";
+    if (type == TYPE_STRING) return "char*"; // Em C, string é char*
+    return "void";
 }
 
-// O Parser usa define 258 para TYPE_INT, etc.
-// Mapeie conforme os valores do seu y.tab.h ou parser.
-// Assumindo: TYPE_INT=258, ARRAY=259, CHAR=260, STRING=261, FLOAT=262
 const char* map_type(int type) {
-    // Hack simples: se o número for grande, tentamos mapear.
-    // O ideal é incluir y.tab.h aqui, mas vamos usar strings diretas.
-    return "int"; // Por padrão, tudo vira int/float em C
+    switch (type) {
+        case TYPE_INT:      return "int";
+        case TYPE_FLOAT:    return "float";
+        case TYPE_CHAR:     return "char";
+        case TYPE_STRING:   return "char*"; // String em C é ponteiro de char
+        default:            return "int";   // Fallback seguro
+    }
 }
 
 void gen_code(ASTNode *node) {
@@ -35,8 +35,9 @@ void gen_code(ASTNode *node) {
             break;
 
         case NODE_DECL:
-            // Traduz: int x; ou int v[10];
+            // Traduz: int x; ou char* s;
             fprintf(f, "%s %s", map_type(node->dataType), node->strValue);
+            
             if (node->kind == 1) { // Array
                 fprintf(f, "[%d]", node->size1);
             } else if (node->kind == 2) { // Matriz
@@ -55,11 +56,11 @@ void gen_code(ASTNode *node) {
             break;
 
         case NODE_PARAM_LIST:
-            // Traduz: int a, int b
-            if (node->left) { // Param Atual
-                 ASTNode *p = node->left; // É um NODE_VAR mas precisamos do tipo
-                 // Simplificação: Assumindo int para params na visualização
-                 fprintf(f, "int %s", p->strValue); 
+            // Traduz params. Ex: int a, char* b
+            if (node->left) { 
+                 ASTNode *p = node->left; 
+                 // Assume-se que o dataType foi preenchido corretamente no parser
+                 fprintf(f, "%s %s", map_type(p->dataType), p->strValue); 
             }
             if (node->right) {
                 fprintf(f, ", ");
@@ -68,22 +69,18 @@ void gen_code(ASTNode *node) {
             break;
 
         case NODE_BLOCK:
-            // Se for o nó raiz de comandos (main implícito), tratamos no parser.
-            // Aqui tratamos blocos internos { }
             fprintf(f, "{\n");
             gen_code(node->left);
             fprintf(f, "}\n");
             break;
 
         case NODE_ASSIGN:
-            // x = expr;
             fprintf(f, "%s = ", node->strValue);
             gen_code(node->left);
             fprintf(f, ";\n");
             break;
 
         case NODE_ASSIGN_IDX:
-            // v[i] = expr;
             fprintf(f, "%s[", node->strValue);
             gen_code(node->left); // Index 1
             fprintf(f, "]");
@@ -102,7 +99,15 @@ void gen_code(ASTNode *node) {
             break;
 
         case NODE_CONST:
-            fprintf(f, "%d", node->intValue);
+            if (node->dataType == TYPE_STRING) {
+                fprintf(f, "%s", node->strValue);
+            } 
+            else if (node->dataType == TYPE_FLOAT) { /* <--- NOVA VERIFICAÇÃO */
+                fprintf(f, "%f", node->floatValue);
+            } 
+            else {
+                fprintf(f, "%d", node->intValue);
+            }
             break;
 
         case NODE_BIN_OP:
@@ -135,8 +140,6 @@ void gen_code(ASTNode *node) {
             break;
 
         case NODE_FOR:
-            // Pascal: for i := start to end
-            // C: for (i = start; i <= end; i++)
             fprintf(f, "for (%s = ", node->strValue);
             gen_code(node->left); // Start
             fprintf(f, "; %s <= ", node->strValue);
@@ -176,45 +179,53 @@ void gen_code(ASTNode *node) {
                 fprintf(f, "]");
             }
             break;
-        case NODE_PRINT:
-            {
-                ASTNode *arg = node->left;
+
+        case NODE_PRINT: {
+            ASTNode *arg = node->left;
+            while (arg != NULL) {
+                // Pega o argumento atual (pode estar numa lista ou ser unico)
+                ASTNode *val = (arg->type == NODE_ARG_LIST) ? arg->left : arg;
                 
-                // O argumento pode ser uma lista (NODE_ARG_LIST) ou um item único
-                while (arg != NULL) {
-                    // Escreve a chamada formatada corretamente para C
-                    fprintf(f, "printf(\"%%d\\n\", ");
+                // Verifica o tipo para usar o format specifier correto
+                if (val->dataType == TYPE_STRING) {
+                    fprintf(f, "printf(\"%%s\\n\", ");
                     
-                    if (arg->type == NODE_ARG_LIST) {
-                        gen_code(arg->left); // Gera o valor (ex: numeros[i])
-                        arg = arg->right;    // Avança para o próximo
+                    if (val->type == NODE_CONST) {
+                         // É literal string (ex: "Ola")
+                         fprintf(f, "%s", val->strValue);
                     } else {
-                        gen_code(arg);       // Gera o valor único
-                        arg = NULL;          // Encerra
+                         // É variavel string (ex: msg)
+                         gen_code(val);
                     }
-                    
-                    fprintf(f, ");\n"); // Fecha o printf e adiciona o ponto e vírgula!
+                } else if (val->dataType == TYPE_FLOAT) {
+                    fprintf(f, "printf(\"%%f\\n\", ");
+                    gen_code(val);
+                } else {
+                    // Padrão Int/Char
+                    fprintf(f, "printf(\"%%d\\n\", ");
+                    gen_code(val);
                 }
+                
+                fprintf(f, ");\n");
+                
+                // Avança para o próximo argumento
+                if (arg->type == NODE_ARG_LIST) arg = arg->right;
+                else arg = NULL;
             }
             break;
+        }
     }
 }
-
-/* codegen.c - Substitua a função generate_c_code antiga por esta */
 
 void generate_c_code(ASTNode *root, char *input_filename) {
     char output_filename[256];
     
-    // Copia o nome de entrada
+    // Gera nome do arquivo de saida (entrada.txt -> entrada.c)
     strncpy(output_filename, input_filename, 250);
-    
-    // Encontra o ponto da extensão
     char *ext = strrchr(output_filename, '.');
     if (ext != NULL) {
-        // Substitui a extensão original por .c
         strcpy(ext, ".c");
     } else {
-        // Se não tiver extensão, apenas adiciona .c
         strcat(output_filename, ".c");
     }
 
@@ -227,18 +238,23 @@ void generate_c_code(ASTNode *root, char *input_filename) {
     fprintf(f, "#include <stdio.h>\n");
     fprintf(f, "\n// Codigo gerado pelo compilador\n\n");
 
-    // Lógica de geração (igual à anterior)
     if (root->type == NODE_SEQ) {
+        // Gera globais primeiro (lado esquerdo da sequencia raiz)
         gen_code(root->left); 
+        
         fprintf(f, "\nint main() {\n");
+        
+        // Gera o bloco principal (lado direito)
         if (root->right && root->right->type == NODE_BLOCK) {
-             gen_code(root->right->left);
+             gen_code(root->right->left); // Pula o wrapper BLOCK_BEGIN
         } else {
              gen_code(root->right);
         }
+        
         fprintf(f, "\nreturn 0;\n");
         fprintf(f, "}\n");
     } else {
+        // Caso programa muito simples (apenas main)
         fprintf(f, "int main() {\n");
         gen_code(root);
         fprintf(f, "return 0;\n}\n");

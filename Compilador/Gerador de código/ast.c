@@ -84,6 +84,13 @@ ASTNode* create_print(ASTNode *args) {
     return node;
 }
 
+ASTNode* create_float_const(float val) {
+    ASTNode *node = create_node(NODE_CONST);
+    node->floatValue = val;
+    node->dataType = 290; // (Ou use TYPE_FLOAT se tiver acesso ao header)
+    return node;
+}
+
 ASTNode* create_array_access(char *name, ASTNode *idx1, ASTNode *idx2) {
     ASTNode *node = create_node(NODE_ARRAY_ACCESS);
     node->strValue = strdup(name);

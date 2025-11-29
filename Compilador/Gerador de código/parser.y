@@ -21,6 +21,7 @@
 
 %union {
     int iValue;         
+    float fValue;
     char* sValue;       
     struct ASTNode* node; 
     int typeValue;      
@@ -29,6 +30,8 @@
 /* Tokens */
 %token <iValue> NUMBER
 %token <sValue> ID
+%token <sValue> STRING_LITERAL 
+%token <fValue> FLOAT_LITERAL
 
 %token WHILE DO IF THEN ELSE ELIF FOR TO
 %token BLOCK_BEGIN BLOCK_END
@@ -260,6 +263,20 @@ expr:
   | expr '-' expr { $$ = create_bin_op("-", $1, $3); $$->dataType = TYPE_INT; }
   | expr '*' expr { $$ = create_bin_op("*", $1, $3); $$->dataType = TYPE_INT; }
   | NUMBER { $$ = create_const($1); $$->dataType = TYPE_INT; }
+  | STRING_LITERAL 
+    { 
+        /* Criamos um nó constante */
+        $$ = create_node(NODE_CONST); 
+        $$->strValue = $1; 
+        
+        /* usando a definição direta do Bison */
+        $$->dataType = TYPE_STRING; 
+    }
+  | FLOAT_LITERAL 
+    { 
+        $$ = create_float_const($1); 
+        $$->dataType = TYPE_FLOAT; 
+    }
   | ID 
     {
         Symbol *sym = lookup_symbol($1);

@@ -67,6 +67,14 @@
 "return"              {return(RETURN);}
 "echo"                {return(PRINT);}
 
+\"[^"\n]*\"  { 
+    yylval.sValue = strdup(yytext); 
+    return STRING_LITERAL; 
+}
+[0-9]+\.[0-9]+  { 
+    yylval.fValue = atof(yytext); 
+    return FLOAT_LITERAL; 
+}
 [a-zA-Z][a-zA-Z0-9]* {yylval.sValue = strdup(yytext); return ID;}
 
 .                     {yyerror("Caractere invalido");}
