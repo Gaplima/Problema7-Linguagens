@@ -1,4 +1,5 @@
 #include "ast.h"
+#include "y.tab.h"
 
 ASTNode* create_node(NodeType type) {
     ASTNode *node = (ASTNode*) malloc(sizeof(ASTNode));
@@ -167,7 +168,15 @@ void print_ast(ASTNode *node, int level) {
             print_ast(node->left, level+2);
             break;
         case NODE_CONST:
-            printf("Num: %d\n", node->intValue);
+            if (node->dataType == TYPE_FLOAT) {
+                printf("Float: %f\n", node->floatValue);
+            } 
+            else if (node->dataType == TYPE_STRING) {
+                printf("String: %s\n", node->strValue);
+            } 
+            else {
+                printf("Num: %d\n", node->intValue);
+            }
             break;
         case NODE_VAR:
             printf("Var: %s\n", node->strValue);

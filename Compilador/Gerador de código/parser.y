@@ -53,6 +53,8 @@
 %type <typeValue> type 
 
 /* Precedência */
+%left OR
+%left AND
 %left GREATER_THAN LESS_THAN GREATER_THAN_OR_EQUALS LESS_THAN_OR_EQUALS EQUALS
 %left '+' '-'
 %left '*' '/'
@@ -271,6 +273,18 @@ expr:
   | expr LESS_THAN_OR_EQUALS expr { $$ = create_bin_op("<=", $1, $3); $$->dataType = TYPE_INT; }
   | expr GREATER_THAN_OR_EQUALS expr { $$ = create_bin_op(">=", $1, $3); $$->dataType = TYPE_INT; }
   | expr EQUALS expr { $$ = create_bin_op("==", $1, $3); $$->dataType = TYPE_INT; }
+  | expr AND expr    { $$ = create_bin_op("&&", $1, $3); $$->dataType = TYPE_INT; }
+  | expr OR expr     { $$ = create_bin_op("||", $1, $3); $$->dataType = TYPE_INT; }
+  | expr POWER expr  { 
+      /* Usaremos "^" para identificar potência na árvore, mas o CodeGen tratará como pow() */
+      $$ = create_bin_op("^", $1, $3); 
+      
+      /* Se a base ou expoente for float, o resultado é float */
+      if ($1->dataType == TYPE_FLOAT || $3->dataType == TYPE_FLOAT)
+          $$->dataType = TYPE_FLOAT;
+      else
+          $$->dataType = TYPE_INT; 
+  }
   | expr '+' expr 
     { 
         if ($1->dataType != $3->dataType) printf("ERRO: Tipos incompativeis soma\n");

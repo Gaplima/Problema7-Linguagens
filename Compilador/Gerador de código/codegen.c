@@ -111,11 +111,22 @@ void gen_code(ASTNode *node) {
             break;
 
         case NODE_BIN_OP:
-            fprintf(f, "(");
-            gen_code(node->left);
-            fprintf(f, " %s ", node->strValue);
-            gen_code(node->right);
-            fprintf(f, ")");
+            /* Verifica se é Potência */
+            if (strcmp(node->strValue, "^") == 0) {
+                fprintf(f, "pow(");
+                gen_code(node->left);
+                fprintf(f, ", ");
+                gen_code(node->right);
+                fprintf(f, ")");
+            } 
+            else {
+                /* Comportamento Padrão (+, -, *, /, &&, ||) */
+                fprintf(f, "(");
+                gen_code(node->left);
+                fprintf(f, " %s ", node->strValue);
+                gen_code(node->right);
+                fprintf(f, ")");
+            }
             break;
 
         case NODE_IF:
@@ -253,6 +264,7 @@ void generate_c_code(ASTNode *root, char *input_filename) {
 
     fprintf(f, "#include <stdio.h>\n");
     fprintf(f, "#include <stdlib.h>\n");
+    fprintf(f, "#include <math.h>\n");
     fprintf(f, "\n// Codigo gerado pelo compilador\n\n");
 
     if (root->type == NODE_SEQ) {
