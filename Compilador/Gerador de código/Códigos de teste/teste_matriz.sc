@@ -1,4 +1,4 @@
-int mat = [3][3];
+int mat := [3][3]; /* CORREÇÃO: Usar := ao invés de = */
 int i;
 int j;
 

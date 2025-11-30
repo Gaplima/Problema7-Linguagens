@@ -1,6 +1,6 @@
 int i;
 int soma;
-int numeros = [10];
+int numeros := [10]; /* CORREÇÃO: Usar := ao invés de = */
 
 soma := 0;
 
