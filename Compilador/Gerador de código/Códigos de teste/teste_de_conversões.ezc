@@ -1,0 +1,74 @@
+/* ========================================================== */
+/* TESTE DE EXPRESSÕES, COERÇÃO E TIPOS                      */
+/* Instrução: Descomente UM erro por vez para testar.        */
+/* ========================================================== */
+
+/* --- Declarações Globais --- */
+int i;
+float f;
+string s;
+float res;
+
+/* --- Inicialização --- */
+i := 10;
+f := 2.5;
+s := "Texto";
+
+/* ========================================================== */
+/* 1. TESTE DE SUCESSO: COERÇÃO AUTOMÁTICA (INT -> FLOAT)     */
+/* ========================================================== */
+/* O parser deve detectar INT + FLOAT, criar um CAST e somar. */
+/* Resultado esperado: 12.500000 */
+
+res := i + f; 
+echo("Resultado da Coercao (10 + 2.5):");
+echo(res);
+
+
+/* ========================================================== */
+/* 2. TESTES DE ERROS DE TIPOS (Descomente um por vez)        */
+/* ========================================================== */
+
+/* [ERRO 1] - SOMA COM STRING */
+/* Mensagem esperada: ERRO (Linha X): Nao pode somar Strings... */
+/* res := s + 10; */
+
+/* [ERRO 2] - SUBTRAÇÃO COM STRING */
+/* Mensagem esperada: ERRO (Linha X): Nao pode subtrair Strings. */
+/* res := i - s; */
+
+/* [ERRO 3] - MULTIPLICAÇÃO COM STRING */
+/* Mensagem esperada: ERRO (Linha X): Nao pode multiplicar Strings. */
+/* res := s * 2; */
+
+/* [ERRO 4] - COMPARAÇÃO MENOR QUE (<) COM STRING */
+/* Mensagem esperada: ERRO (Linha X): Nao pode comparar Strings com <. */
+/* if (s < "Outro") then echo(1); */
+
+/* [ERRO 5] - COMPARAÇÃO MAIOR QUE (>) COM STRING */
+/* Mensagem esperada: ERRO (Linha X): Nao pode comparar Strings com >. */
+/* if (s > "Outro") then echo(1); */
+
+/* [ERRO 6] - IGUALDADE INCOMPATÍVEL (INT == STRING) */
+/* Mensagem esperada: ERRO (Linha X): Comparacao de igualdade invalida... */
+/* if (i == s) then echo(1); */
+
+/* [ERRO 7] - POTÊNCIA COM STRING */
+/* Mensagem esperada: ERRO (Linha X): Nao pode elevar Strings. */
+/* res := s ^ 2; */
+
+
+/* ========================================================== */
+/* 3. TESTES DE ACESSO INDEVIDO                              */
+/* ========================================================== */
+
+/* [ERRO 8] - USAR ESCALAR COMO ARRAY */
+/* Mensagem esperada: ERRO (Linha X): 'i' e array/matriz, use []... (mensagem antiga ajustada) */
+/* OU: ERRO (Linha X): 'i' nao e um array. */
+/* i[0] := 1; */
+
+/* [ERRO 9] - USAR ARRAY COMO ESCALAR */
+/* Para testar isso, precisamos de um array declarado, copie isso e cole na declaração global */
+/* int vet := [5]; */
+/* Mensagem esperada: ERRO (Linha X): 'vet' e array/matriz, use [] para acessar. */
+/* i := vet + 1; */

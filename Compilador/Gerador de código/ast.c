@@ -167,6 +167,12 @@ ASTNode* create_func_call(char *name, ASTNode *args) {
     node->left = args;
     return node;
 }
+ASTNode* create_cast(ASTNode *expr, int targetType) {
+    ASTNode *node = create_node(NODE_CAST);
+    node->left = expr;         /* A expressão original (ex: o inteiro) */
+    node->dataType = targetType; /* O tipo alvo (ex: FLOAT) */
+    return node;
+}
 
 ASTNode* create_return(ASTNode *expr) {
     ASTNode *node = create_node(NODE_RETURN);

@@ -24,7 +24,8 @@ typedef enum {
     NODE_ASSIGN_IDX,   // Para atribuir: x[i] := 10
     NODE_FUNC_DEF,     // Definição de Função
     NODE_FUNC_CALL,    // Chamada de Função
-    NODE_PROC_CALL,    
+    NODE_PROC_CALL,
+    NODE_CAST,   
     NODE_RETURN,       // Return
     NODE_PARAM_LIST,   // Lista de Parâmetros
     NODE_ARG_LIST,      // Lista de Argumentos (na chamada)
@@ -69,6 +70,7 @@ ASTNode* create_access(char *var, char *field);
 ASTNode* create_for(char *varName, ASTNode *start, ASTNode *end, ASTNode *body);
 ASTNode* create_func_def(char *name, int retType, ASTNode *params, ASTNode *body);
 ASTNode* create_func_call(char *name, ASTNode *args);
+ASTNode* create_cast(ASTNode *expr, int targetType);
 ASTNode* create_return(ASTNode *expr);
 ASTNode* create_param_list(ASTNode *param, ASTNode *next);
 ASTNode* create_arg_list(ASTNode *arg, ASTNode *next);

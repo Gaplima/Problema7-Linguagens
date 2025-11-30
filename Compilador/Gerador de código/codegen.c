@@ -202,7 +202,14 @@ void gen_code(ASTNode *node) {
             gen_code(node->left); // Args
             fprintf(f, ")");
             break;
-
+        
+        case NODE_CAST:
+            fprintf(f, "(%s)", map_type(node->dataType)); /* Imprime (float) */
+            fprintf(f, "("); /* Parenteses de segurança */
+            gen_code(node->left);
+            fprintf(f, ")");
+            break;    
+        
         case NODE_ARG_LIST:
             // Trocar a ordem: Imprime o resto da lista (Right) PRIMEIRO
             if (node->right) {

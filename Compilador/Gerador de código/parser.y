@@ -396,29 +396,176 @@ stmt:
   ;
 
 expr:
-    expr LESS_THAN expr            { $$ = create_bin_op("<", $1, $3); $$->dataType = TYPE_INT; }
-  | expr GREATER_THAN expr         { $$ = create_bin_op(">", $1, $3); $$->dataType = TYPE_INT; }
-  | expr LESS_THAN_OR_EQUALS expr  { $$ = create_bin_op("<=", $1, $3); $$->dataType = TYPE_INT; }
-  | expr GREATER_THAN_OR_EQUALS expr { $$ = create_bin_op(">=", $1, $3); $$->dataType = TYPE_INT; }
-  | expr EQUALS expr               { $$ = create_bin_op("==", $1, $3); $$->dataType = TYPE_INT; }
-  | expr AND expr                  { $$ = create_bin_op("&&", $1, $3); $$->dataType = TYPE_INT; }
-  | expr OR expr                   { $$ = create_bin_op("||", $1, $3); $$->dataType = TYPE_INT; }
-  | expr POWER expr  { 
-      $$ = create_bin_op("^", $1, $3);
-      if ($1->dataType == TYPE_FLOAT || $3->dataType == TYPE_FLOAT)
-          $$->dataType = TYPE_FLOAT;
-      else
-          $$->dataType = TYPE_INT; 
-  }
+    /* --- OPERADORES RELACIONAIS (Retornam INT 0 ou 1) --- */
+    expr LESS_THAN expr            
+    { 
+        if ($1->dataType == TYPE_STRING || $3->dataType == TYPE_STRING) {
+             printf("ERRO (Linha %d): Nao pode comparar Strings com <.\n", yylineno); exit(1);
+        }
+        $$ = create_bin_op("<", $1, $3); $$->dataType = TYPE_INT; 
+    }
+  | expr GREATER_THAN expr         
+    { 
+        if ($1->dataType == TYPE_STRING || $3->dataType == TYPE_STRING) {
+             printf("ERRO (Linha %d): Nao pode comparar Strings com >.\n", yylineno); exit(1);
+        }
+        $$ = create_bin_op(">", $1, $3); $$->dataType = TYPE_INT; 
+    }
+  | expr LESS_THAN_OR_EQUALS expr  
+    { 
+        if ($1->dataType == TYPE_STRING || $3->dataType == TYPE_STRING) {
+             printf("ERRO (Linha %d): Nao pode comparar Strings com <=.\n", yylineno); exit(1);
+        }
+        $$ = create_bin_op("<=", $1, $3); $$->dataType = TYPE_INT; 
+    }
+  | expr GREATER_THAN_OR_EQUALS expr 
+    { 
+        if ($1->dataType == TYPE_STRING || $3->dataType == TYPE_STRING) {
+             printf("ERRO (Linha %d): Nao pode comparar Strings com >=.\n", yylineno); exit(1);
+        }
+        $$ = create_bin_op(">=", $1, $3); $$->dataType = TYPE_INT; 
+    }
+  | expr EQUALS expr               
+    { 
+        /* Para igualdade, permitimos comparar tipos iguais. Se forem diferentes numéricos, o C resolve */
+        if ($1->dataType != $3->dataType && !($1->dataType != TYPE_STRING && $3->dataType != TYPE_STRING)) {
+             printf("ERRO (Linha %d): Comparacao de igualdade invalida (Tipos incompativeis).\n", yylineno); exit(1);
+        }
+        $$ = create_bin_op("==", $1, $3); $$->dataType = TYPE_INT; 
+    }
+
+    /* --- OPERADORES LÓGICOS --- */
+  | expr AND expr                  
+    { $$ = create_bin_op("&&", $1, $3); $$->dataType = TYPE_INT; }
+  | expr OR expr                   
+    { $$ = create_bin_op("||", $1, $3); $$->dataType = TYPE_INT; }
+
+    /* --- POTÊNCIA (Sempre promove para Float se necessário) --- */
+  | expr POWER expr  
+    { 
+      if ($1->dataType == TYPE_STRING || $3->dataType == TYPE_STRING) {
+           printf("ERRO (Linha %d): Nao pode elevar Strings.\n", yylineno); exit(1);
+      }
+      
+      ASTNode *L = $1;
+      ASTNode *R = $3;
+      
+      /* Se algum for float, casta o outro para float */
+      if (L->dataType == TYPE_FLOAT && R->dataType == TYPE_INT) {
+           R = create_cast(R, TYPE_FLOAT);
+           $$ = create_bin_op("^", L, R);
+           $$->dataType = TYPE_FLOAT;
+      }
+      else if (L->dataType == TYPE_INT && R->dataType == TYPE_FLOAT) {
+           L = create_cast(L, TYPE_FLOAT);
+           $$ = create_bin_op("^", L, R);
+           $$->dataType = TYPE_FLOAT;
+      }
+      else if (L->dataType == TYPE_FLOAT && R->dataType == TYPE_FLOAT) {
+           $$ = create_bin_op("^", L, R);
+           $$->dataType = TYPE_FLOAT;
+      }
+      else {
+           /* Int ^ Int = Int (ou Float dependendo da sua regra, mantendo Int aqui) */
+           $$ = create_bin_op("^", L, R);
+           $$->dataType = TYPE_INT; 
+      }
+    }
+  
   | '(' expr ')' { $$ = $2; }
+
+    /* --- OPERADORES ARITMÉTICOS (SOMA) --- */
   | expr '+' expr 
     { 
-        if ($1->dataType != $3->dataType) 
-            printf("AVISO (Linha %d): Soma de tipos diferentes (Implicito).\n", yylineno);
-        $$ = create_bin_op("+", $1, $3); $$->dataType = $1->dataType;
+        /* 1. Verifica Erro de String */
+        if ($1->dataType == TYPE_STRING || $3->dataType == TYPE_STRING) {
+            printf("ERRO (Linha %d): Nao pode somar um número a uma string", yylineno); exit(1);
+        }
+        
+        /* 2. Coerção: INT + FLOAT -> FLOAT */
+        if ($1->dataType == TYPE_INT && $3->dataType == TYPE_FLOAT) {
+             $$ = create_bin_op("+", create_cast($1, TYPE_FLOAT), $3);
+             $$->dataType = TYPE_FLOAT;
+        }
+        /* 3. Coerção: FLOAT + INT -> FLOAT */
+        else if ($1->dataType == TYPE_FLOAT && $3->dataType == TYPE_INT) {
+             $$ = create_bin_op("+", $1, create_cast($3, TYPE_FLOAT));
+             $$->dataType = TYPE_FLOAT;
+        }
+        /* 4. Tipos Iguais */
+        else {
+             $$ = create_bin_op("+", $1, $3); 
+             $$->dataType = $1->dataType;
+        }
     }
-  | expr '-' expr { $$ = create_bin_op("-", $1, $3); $$->dataType = TYPE_INT; }
-  | expr '*' expr { $$ = create_bin_op("*", $1, $3); $$->dataType = TYPE_INT; }
+    
+    /* --- SUBTRAÇÃO --- */
+  | expr '-' expr 
+    { 
+        if ($1->dataType == TYPE_STRING || $3->dataType == TYPE_STRING) {
+            printf("ERRO (Linha %d): Nao pode subtrair um número de uma string\n", yylineno); exit(1);
+        }
+        
+        if ($1->dataType == TYPE_INT && $3->dataType == TYPE_FLOAT) {
+             $$ = create_bin_op("-", create_cast($1, TYPE_FLOAT), $3);
+             $$->dataType = TYPE_FLOAT;
+        }
+        else if ($1->dataType == TYPE_FLOAT && $3->dataType == TYPE_INT) {
+             $$ = create_bin_op("-", $1, create_cast($3, TYPE_FLOAT));
+             $$->dataType = TYPE_FLOAT;
+        }
+        else {
+             $$ = create_bin_op("-", $1, $3); 
+             $$->dataType = $1->dataType;
+        }
+    }
+    
+    /* --- MULTIPLICAÇÃO --- */
+  | expr '*' expr 
+    { 
+        if ($1->dataType == TYPE_STRING || $3->dataType == TYPE_STRING) {
+            printf("ERRO (Linha %d): Nao pode multiplicar um número a uma string.\n", yylineno); exit(1);
+        }
+        
+        if ($1->dataType == TYPE_INT && $3->dataType == TYPE_FLOAT) {
+             $$ = create_bin_op("*", create_cast($1, TYPE_FLOAT), $3);
+             $$->dataType = TYPE_FLOAT;
+        }
+        else if ($1->dataType == TYPE_FLOAT && $3->dataType == TYPE_INT) {
+             $$ = create_bin_op("*", $1, create_cast($3, TYPE_FLOAT));
+             $$->dataType = TYPE_FLOAT;
+        }
+        else {
+             $$ = create_bin_op("*", $1, $3); 
+             $$->dataType = $1->dataType;
+        }
+    }
+
+    /* --- DIVISÃO --- */
+  | expr '/' expr 
+    { 
+        if ($1->dataType == TYPE_STRING || $3->dataType == TYPE_STRING) {
+            printf("ERRO (Linha %d): Nao pode dividir Strings.\n", yylineno); exit(1);
+        }
+        
+        /* Divisão sempre tende a Float se um deles for Float. 
+           Se forem dois INTs, permanece divisão inteira do C (ex: 5/2 = 2). */
+           
+        if ($1->dataType == TYPE_INT && $3->dataType == TYPE_FLOAT) {
+             $$ = create_bin_op("/", create_cast($1, TYPE_FLOAT), $3);
+             $$->dataType = TYPE_FLOAT;
+        }
+        else if ($1->dataType == TYPE_FLOAT && $3->dataType == TYPE_INT) {
+             $$ = create_bin_op("/", $1, create_cast($3, TYPE_FLOAT));
+             $$->dataType = TYPE_FLOAT;
+        }
+        else {
+             $$ = create_bin_op("/", $1, $3); 
+             $$->dataType = $1->dataType;
+        }
+    }
+
+    /* --- TERMINAIS BÁSICOS --- */
   | NUMBER { $$ = create_const($1); $$->dataType = TYPE_INT; }
   | STRING_LITERAL 
     { 
