@@ -20,7 +20,7 @@
 %}
 
 %union {
-    int iValue;         
+    int iValue;
     float fValue;
     char* sValue;       
     struct ASTNode* node; 
@@ -33,6 +33,7 @@
 %token <sValue> STRING_LITERAL 
 %token <fValue> FLOAT_LITERAL
 
+%token UNIT DOT
 %token WHILE DO IF THEN ELSE ELIF FOR TO
 %token BLOCK_BEGIN BLOCK_END
 %token ASSIGN SEMI RETURN PRINT READ
@@ -46,7 +47,7 @@
 
 /* Tipos dos Nós */
 %type <node> program stmt_list stmt expr
-%type <node> globals global_item func_def 
+%type <node> globals global_item func_def unit_def unit_feature
 %type <node> declarations declaration
 %type <node> params param_list param
 %type <node> args arg_list
@@ -63,10 +64,6 @@
 %nonassoc ELSE
 
 %%
-
-/* ========================================================================== */
-/* ESTRUTURA GERAL                                                            */
-/* ========================================================================== */
 
 program:
     globals stmt_list
@@ -102,12 +99,49 @@ globals:
 
 global_item:
     declaration { $$ = $1; }
-  | func_def    { $$ = $1; }       
+  | func_def    { $$ = $1; }
+  | unit_def    { $$ = $1; }
+  | unit_feature { $$ = $1; } /* NOVA REGRA PARA RESOLVER CONFLITO */
   ;
 
-/* ========================================================================== */
-/* DECLARAÇÕES                                                                */
-/* ========================================================================== */
+unit_def:
+    UNIT ID BLOCK_BEGIN declarations BLOCK_END
+    {
+        $$ = create_unit_def($2, $4);
+        free($2);
+    }
+  ;
+
+/* Regra Unificada para UNITs no Escopo Global/Local */
+/* Resolve a ambiguidade entre "unit A x;" e "unit A f()" */
+unit_feature:
+    /* 1. Declaração de Variável Unit: unit Ponto p1; */
+    UNIT ID ID SEMI
+    {
+        install_symbol($3, 1000, KIND_UNIT, 0, 0);
+        ASTNode *node = create_decl($3, 1000, KIND_UNIT, 0, 0);
+        node->unitName = strdup($2);
+        $$ = node;
+        free($2); free($3);
+    }
+    /* 2. Definição de Função Unit: unit Ponto criar() ... */
+  | UNIT ID ID '(' 
+    { 
+        install_symbol($3, 1000, KIND_FUNCTION, 0, 0);
+        enter_scope(); 
+    }
+    params ')' BLOCK_BEGIN declarations stmt_list BLOCK_END
+    {
+        ASTNode *body = $10;
+        if ($9 != NULL) body = create_seq($9, $10);
+        
+        $$ = create_func_def($3, 1000, $6, body);
+        $$->unitName = strdup($2); 
+        
+        exit_scope();
+        free($2); free($3);
+    }
+  ;
 
 declarations:
     declarations declaration
@@ -119,27 +153,43 @@ declarations:
             $$ = $1;
         }
     }
+  /* Adicionamos unit_feature aqui também para permitir variaveis locais unit */
+  | declarations unit_feature 
+    {
+        /* Nota: unit_feature também casa com função, mas semanticamente */
+        /* não deveríamos definir funções dentro de funções. O Parser aceitará sintaticamente. */
+        if ($2 != NULL) {
+            if ($1 == NULL) $$ = $2;
+            else $$ = create_seq($1, $2);
+        } else {
+            $$ = $1;
+        }
+    }
   | /* vazio */ { $$ = NULL; }
   ;
 
 declaration:
+    /* Caso 1: Declaração Simples (int x;) */
     type ID SEMI
     {
         Symbol *s = lookup_symbol($2);
         if (s != NULL && s->scope == current_scope) {
-             printf("ERRO: %s duplicado\n", $2); exit(1); 
+             printf("ERRO: %s duplicado\n", $2);
+             exit(1); 
         }
         install_symbol($2, $1, KIND_SCALAR, 0, 0);
         $$ = create_decl($2, $1, KIND_SCALAR, 0, 0);
         free($2); 
     }
-  | type ID '=' '[' NUMBER ']' SEMI
+  /* Caso 2: Array (int v := [10];) */
+  | type ID ASSIGN '[' NUMBER ']' SEMI
     {
         install_symbol($2, $1, KIND_ARRAY, $5, 0);
         $$ = create_decl($2, $1, KIND_ARRAY, $5, 0);
         free($2);
     }
-  | type ID '=' '[' NUMBER ']' '[' NUMBER ']' SEMI
+  /* Caso 3: Matriz (int m := [10][10];) */
+  | type ID ASSIGN '[' NUMBER ']' '[' NUMBER ']' SEMI
     {
         install_symbol($2, $1, KIND_MATRIX, $5, $8);
         $$ = create_decl($2, $1, KIND_MATRIX, $5, $8);
@@ -154,11 +204,8 @@ type:
   | TYPE_CHAR   { $$ = TYPE_CHAR; }
   ;
 
-/* ========================================================================== */
-/* FUNÇÕES                                                                    */
-/* ========================================================================== */
-
 func_def:
+    /* Apenas funções de tipos básicos (int, float...) */
     type ID '(' 
     { 
         install_symbol($2, $1, KIND_FUNCTION, 0, 0);
@@ -167,16 +214,12 @@ func_def:
     params ')' BLOCK_BEGIN declarations stmt_list BLOCK_END
     {
         ASTNode *body = $9;
-        if ($8 != NULL) {
-            body = create_seq($8, $9);
-        }
-
+        if ($8 != NULL) body = create_seq($8, $9);
         $$ = create_func_def($2, $1, $5, body);
-        
         exit_scope();
         free($2);
     }
-    ;
+  ;
 
 params:
     param_list { $$ = $1; }
@@ -196,10 +239,6 @@ param:
         free($2);
     }
     ;
-
-/* ========================================================================== */
-/* COMANDOS E EXPRESSÕES                                                      */
-/* ========================================================================== */
 
 stmt_list:
     stmt_list stmt { $$ = create_seq($1, $2); }
@@ -227,8 +266,9 @@ stmt:
     {
         Symbol *sym = lookup_symbol($1);
         if (!sym) { printf("ERRO: '%s' nao declarado.\n", $1); exit(1); }
-        if (sym->kind != KIND_SCALAR) { printf("ERRO: '%s' nao escalar.\n", $1); exit(1); }
-        if (sym->type != $3->dataType) { printf("AVISO: Tipos diferentes em '%s'.\n", $1); }
+        if (sym->kind != KIND_SCALAR && sym->kind != KIND_UNIT) { 
+             printf("ERRO: '%s' nao escalar/unit.\n", $1); exit(1); 
+        }
         $$ = create_assign($1, $3);
         free($1);
     }
@@ -250,18 +290,36 @@ stmt:
   | READ '(' ID ')' SEMI 
     {
         Symbol *sym = lookup_symbol($3);
-        if (!sym) { 
-            printf("ERRO: Tentando ler para variavel '%s' nao declarada.\n", $3); 
-            exit(1); 
-        }
-        if (sym->kind != KIND_SCALAR) {
-            printf("ERRO: 'read' so funciona com variaveis simples (escalares).\n");
-            exit(1);
-        }
-        
-        /* Cria o nó passando o Nome e o TIPO da variável */
+        if (!sym) { printf("ERRO: Var '%s' nao declarada.\n", $3); exit(1); }
+        if (sym->kind != KIND_SCALAR) { printf("ERRO: '%s' deve ser variavel simples.\n", $3); exit(1); }
         $$ = create_read($3, sym->type);
         free($3);
+    }
+  | READ '(' ID '[' expr ']' ')' SEMI 
+    {
+        Symbol *sym = lookup_symbol($3);
+        if (!sym) { printf("ERRO: Array '%s' nao declarado.\n", $3); exit(1); }
+        if (sym->kind != KIND_ARRAY) { printf("ERRO: '%s' nao e array.\n", $3); exit(1); }
+        $$ = create_read_array($3, $5, sym->type);
+        free($3);
+    }
+  | READ '(' ID '[' expr ']' '[' expr ']' ')' SEMI 
+    {
+        Symbol *sym = lookup_symbol($3);
+        if (!sym) { printf("ERRO: Matriz '%s' nao declarada.\n", $3); exit(1); }
+        if (sym->kind != KIND_MATRIX) { printf("ERRO: '%s' nao e matriz.\n", $3); exit(1); }
+        $$ = create_read_matrix($3, $5, $8, sym->type);
+        free($3);
+    }
+  | ID DOT ID ASSIGN expr SEMI
+    {
+         ASTNode *acc = create_access($1, $3);
+         ASTNode *assign = create_node(NODE_ASSIGN);
+         assign->strValue = strdup("ASSIGN_ACCESS");
+         assign->left = acc;
+         assign->right = $5;
+         $$ = assign;
+         free($1); free($3);
     }
   | RETURN expr SEMI { $$ = create_return($2); }
   | SEMI { $$ = NULL; }
@@ -276,15 +334,13 @@ expr:
   | expr AND expr    { $$ = create_bin_op("&&", $1, $3); $$->dataType = TYPE_INT; }
   | expr OR expr     { $$ = create_bin_op("||", $1, $3); $$->dataType = TYPE_INT; }
   | expr POWER expr  { 
-      /* Usaremos "^" para identificar potência na árvore, mas o CodeGen tratará como pow() */
-      $$ = create_bin_op("^", $1, $3); 
-      
-      /* Se a base ou expoente for float, o resultado é float */
+      $$ = create_bin_op("^", $1, $3);
       if ($1->dataType == TYPE_FLOAT || $3->dataType == TYPE_FLOAT)
           $$->dataType = TYPE_FLOAT;
       else
           $$->dataType = TYPE_INT; 
   }
+  | '(' expr ')' { $$ = $2; }
   | expr '+' expr 
     { 
         if ($1->dataType != $3->dataType) printf("ERRO: Tipos incompativeis soma\n");
@@ -295,25 +351,29 @@ expr:
   | NUMBER { $$ = create_const($1); $$->dataType = TYPE_INT; }
   | STRING_LITERAL 
     { 
-        /* Criamos um nó constante */
-        $$ = create_node(NODE_CONST); 
+        $$ = create_node(NODE_CONST);
         $$->strValue = $1; 
-        
-        /* usando a definição direta do Bison */
-        $$->dataType = TYPE_STRING; 
+        $$->dataType = TYPE_STRING;
     }
   | FLOAT_LITERAL 
     { 
-        $$ = create_float_const($1); 
+        $$ = create_float_const($1);
         $$->dataType = TYPE_FLOAT; 
+    }
+  | ID DOT ID 
+    { 
+        $$ = create_access($1, $3);
+        $$->dataType = TYPE_INT; 
+        free($1); free($3);
     }
   | ID 
     {
         Symbol *sym = lookup_symbol($1);
         if (!sym) { printf("ERRO: '%s' sumiu?\n", $1); exit(1); }
-        if (sym->kind != KIND_SCALAR) { printf("ERRO: '%s' e array, use []\n", $1); exit(1); }
+        if (sym->kind != KIND_SCALAR && sym->kind != KIND_UNIT) { printf("ERRO: '%s' e array, use []\n", $1); exit(1); }
         $$ = create_var($1);
         $$->dataType = sym->type;
+        if (sym->kind == KIND_UNIT) $$->kind = KIND_UNIT;
         free($1);
     }
   | ID '(' args ')'
@@ -359,7 +419,6 @@ void yyerror(char *msg) {
 }
 
 extern FILE *yyin;
-
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         printf("Uso: %s <arquivo_entrada>\n", argv[0]);

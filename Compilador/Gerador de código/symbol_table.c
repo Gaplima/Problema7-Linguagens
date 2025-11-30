@@ -80,11 +80,12 @@ void install_symbol(char *name, int type, int kind, int size1, int size2) {
     newSym->next = symbolTable[idx];
     symbolTable[idx] = newSym;
     
-    // CORREÇÃO NA LÓGICA DE PRINT
     if (kind == KIND_FUNCTION) {
          printf("[DEBUG] Funcao '%s' declarada (Global).\n", name);
     } else if (kind == KIND_SCALAR) {
          printf("[DEBUG] Var '%s' instalada no Escopo %d.\n", name, current_scope);
+    } else if (kind == KIND_UNIT) {  /* <--- ADICIONE ESTE BLOCO */
+         printf("[DEBUG] Unit/Struct '%s' instalada.\n", name);
     } else if(kind == KIND_ARRAY) {
         printf("[DEBUG] Array '%s'[%d] instalado.\n", name, size1);
     } else {

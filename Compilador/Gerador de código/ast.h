@@ -26,7 +26,9 @@ typedef enum {
     NODE_FUNC_CALL,    // Chamada de Função
     NODE_RETURN,       // Return
     NODE_PARAM_LIST,   // Lista de Parâmetros
-    NODE_ARG_LIST      // Lista de Argumentos (na chamada)
+    NODE_ARG_LIST,      // Lista de Argumentos (na chamada)
+    NODE_UNIT_DEF,     // Definição da Unit (o molde)
+    NODE_ACCESS 
 } NodeType;
 
 // Estrutura do Nó da Árvore
@@ -39,6 +41,7 @@ typedef struct ASTNode {
     int kind;   // 0=Escalar, 1=Array, 2=Matriz
     int size1;
     int size2;
+    char *unitName;
 
     struct ASTNode *left;
     struct ASTNode *right;
@@ -57,7 +60,11 @@ ASTNode* create_print(ASTNode *args);
 ASTNode* create_read(char *varName, int type);
 ASTNode* create_float_const(float val);
 ASTNode* create_array_access(char *name, ASTNode *idx1, ASTNode *idx2);
+ASTNode* create_read_array(char *varName, ASTNode *index, int type);
+ASTNode* create_read_matrix(char *varName, ASTNode *row, ASTNode *col, int type);
 ASTNode* create_assign_idx(char *name, ASTNode *idx1, ASTNode *idx2, ASTNode *val);
+ASTNode* create_unit_def(char *name, ASTNode *fields);
+ASTNode* create_access(char *var, char *field);
 ASTNode* create_for(char *varName, ASTNode *start, ASTNode *end, ASTNode *body);
 ASTNode* create_func_def(char *name, int retType, ASTNode *params, ASTNode *body);
 ASTNode* create_func_call(char *name, ASTNode *args);

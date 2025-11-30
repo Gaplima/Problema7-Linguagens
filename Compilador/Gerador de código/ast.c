@@ -1,5 +1,6 @@
 #include "ast.h"
 #include "y.tab.h"
+#include "symbol_table.h"
 
 ASTNode* create_node(NodeType type) {
     ASTNode *node = (ASTNode*) malloc(sizeof(ASTNode));
@@ -107,12 +108,47 @@ ASTNode* create_array_access(char *name, ASTNode *idx1, ASTNode *idx2) {
     return node;
 }
 
+ASTNode* create_read_array(char *varName, ASTNode *index, int type) {
+    ASTNode *node = create_node(NODE_READ);
+    node->strValue = strdup(varName);
+    node->dataType = type;
+    node->kind = KIND_ARRAY; // Marca como Array
+    node->left = index;      // Guarda o índice
+    return node;
+}
+
+ASTNode* create_read_matrix(char *varName, ASTNode *row, ASTNode *col, int type) {
+    ASTNode *node = create_node(NODE_READ);
+    node->strValue = strdup(varName);
+    node->dataType = type;
+    node->kind = KIND_MATRIX; // Marca como Matriz
+    node->left = row;         // Linha
+    node->right = col;        // Coluna
+    return node;
+}
+
 ASTNode* create_assign_idx(char *name, ASTNode *idx1, ASTNode *idx2, ASTNode *val) {
     ASTNode *node = create_node(NODE_ASSIGN_IDX);
     node->strValue = strdup(name);
     node->left = idx1;
     node->right = idx2;
     node->extra = val;
+    return node;
+}
+/* ast.c */
+
+ASTNode* create_unit_def(char *name, ASTNode *fields) {
+    ASTNode *node = create_node(NODE_UNIT_DEF);
+    node->strValue = strdup(name);
+    node->left = fields;
+    return node;
+}
+
+ASTNode* create_access(char *var, char *field) {
+    ASTNode *node = create_node(NODE_ACCESS);
+    node->strValue = strdup(var); // Nome da variavel (r1)
+    node->extra = create_node(NODE_VAR);
+    node->extra->strValue = strdup(field); // Nome do campo (numerador)
     return node;
 }
 
@@ -243,7 +279,8 @@ void print_ast(ASTNode *node, int level) {
             }
             print_indent(level+1); printf("Value:\n");
             print_ast(node->extra, level+2);
-            break; // <--- CORREÇÃO: ADICIONADO BREAK QUE FALTAVA
+            break;
+            
         case NODE_FUNC_DEF:
             printf("FUNCTION: %s (Type: %d)\n", node->strValue, node->dataType);
             print_indent(level+1); printf("Params:\n");

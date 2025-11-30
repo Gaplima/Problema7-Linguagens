@@ -10,6 +10,7 @@
 #define KIND_ARRAY  1
 #define KIND_MATRIX 2
 #define KIND_FUNCTION 3  // <--- Para identificar nomes de função
+#define KIND_UNIT 4
 
 typedef struct Symbol {
     char *name;

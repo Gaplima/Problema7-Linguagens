@@ -2,6 +2,7 @@
 #include <string.h>
 #include "ast.h"
 #include "y.tab.h"
+#include "symbol_table.h"
 
 // Arquivo de saída global para simplificar
 FILE *f = NULL;
@@ -28,43 +29,49 @@ void gen_code(ASTNode *node) {
     if (!node) return;
 
     switch (node->type) {
-        
         case NODE_SEQ:
             gen_code(node->left);
             gen_code(node->right);
             break;
 
-        case NODE_DECL:
-            // Traduz: int x; ou char* s;
-            fprintf(f, "%s %s", map_type(node->dataType), node->strValue);
-            
-            if (node->kind == 1) { // Array
-                fprintf(f, "[%d]", node->size1);
-            } else if (node->kind == 2) { // Matriz
-                fprintf(f, "[%d][%d]", node->size1, node->size2);
-            }
-            fprintf(f, ";\n");
+        case NODE_UNIT_DEF:
+            /* Traduz 'unit Nome' para 'struct Nome' */
+            fprintf(f, "struct %s {\n", node->strValue);
+            gen_code(node->left); 
+            fprintf(f, "};\n");
             break;
 
-        case NODE_FUNC_DEF:
-            // Traduz: int nome(params) { body }
-            fprintf(f, "\n%s %s(", map_type(node->dataType), node->strValue);
-            gen_code(node->left); // Params
-            fprintf(f, ") {\n");
-            gen_code(node->right); // Body
-            fprintf(f, "}\n");
+        case NODE_DECL:
+             if (node->kind == KIND_UNIT) {
+                fprintf(f, "struct %s %s;\n", node->unitName, node->strValue);
+            } else {
+                /* IMPRESSÃO CORRETA */
+                fprintf(f, "%s %s", map_type(node->dataType), node->strValue);
+                
+                if (node->kind == KIND_ARRAY) {
+                    fprintf(f, "[%d]", node->size1);
+                } else if (node->kind == KIND_MATRIX) {
+                    fprintf(f, "[%d][%d]", node->size1, node->size2);
+                }
+                fprintf(f, ";\n");
+            } 
+            break; 
+
+        case NODE_ACCESS:
+            /* p1.x */
+            fprintf(f, "%s.%s", node->strValue, node->extra->strValue);
             break;
 
         case NODE_PARAM_LIST:
-            // Traduz params. Ex: int a, char* b
+            // Trocar a ordem: Imprime o resto da lista (Right) PRIMEIRO
+            if (node->right) {
+                gen_code(node->right);
+                fprintf(f, ", ");
+            }
+            // Depois imprime o parametro atual (Left)
             if (node->left) { 
                  ASTNode *p = node->left; 
-                 // Assume-se que o dataType foi preenchido corretamente no parser
                  fprintf(f, "%s %s", map_type(p->dataType), p->strValue); 
-            }
-            if (node->right) {
-                fprintf(f, ", ");
-                gen_code(node->right);
             }
             break;
 
@@ -75,9 +82,18 @@ void gen_code(ASTNode *node) {
             break;
 
         case NODE_ASSIGN:
-            fprintf(f, "%s = ", node->strValue);
-            gen_code(node->left);
-            fprintf(f, ";\n");
+            /* Verifica se é uma atribuição especial de acesso */
+            if (node->left && node->left->type == NODE_ACCESS) {
+                 gen_code(node->left); // Imprime p1.x
+                 fprintf(f, " = ");
+                 gen_code(node->right);
+                 fprintf(f, ";\n");
+            } else {
+                 // Atribuição normal: x = ...
+                 fprintf(f, "%s = ", node->strValue);
+                 gen_code(node->left);
+                 fprintf(f, ";\n");
+            }
             break;
 
         case NODE_ASSIGN_IDX:
@@ -165,7 +181,22 @@ void gen_code(ASTNode *node) {
             gen_code(node->left);
             fprintf(f, ";\n");
             break;
-
+        
+        case NODE_FUNC_DEF:
+            /* Verifica se é uma função que retorna Struct/Unit */
+            if (node->unitName != NULL) {
+                fprintf(f, "\nstruct %s %s(", node->unitName, node->strValue);
+            } else {
+                /* Função normal (int, float...) */
+                fprintf(f, "\n%s %s(", map_type(node->dataType), node->strValue);
+            }
+            
+            gen_code(node->left); // Params
+            fprintf(f, ") {\n");
+            gen_code(node->right); // Body
+            fprintf(f, "}\n");
+            break;
+        
         case NODE_FUNC_CALL:
             fprintf(f, "%s(", node->strValue);
             gen_code(node->left); // Args
@@ -173,11 +204,13 @@ void gen_code(ASTNode *node) {
             break;
 
         case NODE_ARG_LIST:
-            gen_code(node->left);
+            // Trocar a ordem: Imprime o resto da lista (Right) PRIMEIRO
             if (node->right) {
-                fprintf(f, ", ");
                 gen_code(node->right);
+                fprintf(f, ", ");
             }
+            // Depois imprime o argumento atual (Left)
+            gen_code(node->left);
             break;
 
         case NODE_ARRAY_ACCESS:
@@ -191,21 +224,41 @@ void gen_code(ASTNode *node) {
             }
             break;
 
-        case NODE_READ:
-            if (node->dataType == TYPE_INT) {
-                fprintf(f, "scanf(\"%%d\", &%s);\n", node->strValue);
+        /* codegen.c */
+
+        case NODE_READ: {
+            // 1. Define o especificador de formato (%d ou %f)
+            char *fmt = "%d";
+            if (node->dataType == TYPE_FLOAT) fmt = "%f";
+            else if (node->dataType == TYPE_STRING) fmt = "%255s"; // Simplificado
+            
+            // 2. Inicia o scanf: scanf("%d", &nome
+            fprintf(f, "scanf(\"%s\", &%s", fmt, node->strValue);
+            
+            // 3. Se tiver indices, imprime eles: [i] ou [i][j]
+            if (node->kind == KIND_ARRAY) {
+                fprintf(f, "[");
+                gen_code(node->left); // Gera o codigo do indice
+                fprintf(f, "]");
             } 
-            else if (node->dataType == TYPE_FLOAT) {
-                fprintf(f, "scanf(\"%%f\", &%s);\n", node->strValue);
+            else if (node->kind == KIND_MATRIX) {
+                fprintf(f, "[");
+                gen_code(node->left); // Linha
+                fprintf(f, "][");
+                gen_code(node->right); // Coluna
+                fprintf(f, "]");
             }
-            else if (node->dataType == TYPE_STRING) {
-                // Aloca memória temporária para a string (segurança básica)
-                // scanf("%s") lê até o primeiro espaço. Para ler linha toda seria gets/fgets.
-                // Vamos usar %s simples por enquanto.
-                fprintf(f, "%s = (char*)malloc(256 * sizeof(char));\n", node->strValue);
-                fprintf(f, "scanf(\"%%255s\", %s);\n", node->strValue); // Sem & para char*
+
+            // 4. Fecha o scanf
+            fprintf(f, ");\n");
+            
+            // Tratamento especial para malloc de string (se necessario)
+            if (node->dataType == TYPE_STRING && node->kind == KIND_SCALAR) {
+                 // Nota: Para arrays de string seria mais complexo, 
+                 // assumindo aqui apenas leitura simples ou numéricos em arrays.
             }
             break;
+        }
 
         case NODE_PRINT: {
             ASTNode *arg = node->left;
