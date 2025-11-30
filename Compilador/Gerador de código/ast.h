@@ -24,6 +24,7 @@ typedef enum {
     NODE_ASSIGN_IDX,   // Para atribuir: x[i] := 10
     NODE_FUNC_DEF,     // Definição de Função
     NODE_FUNC_CALL,    // Chamada de Função
+    NODE_PROC_CALL,    
     NODE_RETURN,       // Return
     NODE_PARAM_LIST,   // Lista de Parâmetros
     NODE_ARG_LIST,      // Lista de Argumentos (na chamada)

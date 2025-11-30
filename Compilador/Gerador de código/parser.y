@@ -5,6 +5,9 @@
   #include "symbol_table.h"
   #include "ast.h"
 
+  /* Variável externa contada pelo Flex */
+  extern int yylineno;
+
   void generate_c_code(ASTNode *root, char *filename);
   int yylex(void);
   void yyerror(char *msg);
@@ -101,7 +104,7 @@ global_item:
     declaration { $$ = $1; }
   | func_def    { $$ = $1; }
   | unit_def    { $$ = $1; }
-  | unit_feature { $$ = $1; } /* NOVA REGRA PARA RESOLVER CONFLITO */
+  | unit_feature { $$ = $1; } 
   ;
 
 unit_def:
@@ -113,7 +116,6 @@ unit_def:
   ;
 
 /* Regra Unificada para UNITs no Escopo Global/Local */
-/* Resolve a ambiguidade entre "unit A x;" e "unit A f()" */
 unit_feature:
     /* 1. Declaração de Variável Unit: unit Ponto p1; */
     UNIT ID ID SEMI
@@ -128,17 +130,24 @@ unit_feature:
   | UNIT ID ID '(' 
     { 
         install_symbol($3, 1000, KIND_FUNCTION, 0, 0);
-        enter_scope(); 
+        enter_scope(); /* Escopo 1: Parâmetros */
     }
-    params ')' BLOCK_BEGIN declarations stmt_list BLOCK_END
+    params ')' block_start declarations stmt_list BLOCK_END
     {
-        ASTNode *body = $10;
+        /* block_start criou o Escopo 2 (Corpo) */
+        /* params estao no Escopo 1 */
+        
+        ASTNode *body = $10; /* stmt_list ($10) */
+        
+        /* Concatena declarations ($9) com stmt_list ($10) se houver */
         if ($9 != NULL) body = create_seq($9, $10);
         
         $$ = create_func_def($3, 1000, $6, body);
         $$->unitName = strdup($2); 
         
-        exit_scope();
+        exit_scope(); /* Fecha Escopo 2 (Corpo) */
+        exit_scope(); /* Fecha Escopo 1 (Parâmetros) */
+        
         free($2); free($3);
     }
   ;
@@ -153,11 +162,8 @@ declarations:
             $$ = $1;
         }
     }
-  /* Adicionamos unit_feature aqui também para permitir variaveis locais unit */
   | declarations unit_feature 
     {
-        /* Nota: unit_feature também casa com função, mas semanticamente */
-        /* não deveríamos definir funções dentro de funções. O Parser aceitará sintaticamente. */
         if ($2 != NULL) {
             if ($1 == NULL) $$ = $2;
             else $$ = create_seq($1, $2);
@@ -173,8 +179,9 @@ declaration:
     type ID SEMI
     {
         Symbol *s = lookup_symbol($2);
+        /* (B) Verifica colisão no mesmo escopo */
         if (s != NULL && s->scope == current_scope) {
-             printf("ERRO: %s duplicado\n", $2);
+             printf("ERRO (Linha %d): Variavel '%s' ja declarada neste escopo.\n", yylineno, $2);
              exit(1); 
         }
         install_symbol($2, $1, KIND_SCALAR, 0, 0);
@@ -205,18 +212,25 @@ type:
   ;
 
 func_def:
-    /* Apenas funções de tipos básicos (int, float...) */
     type ID '(' 
     { 
         install_symbol($2, $1, KIND_FUNCTION, 0, 0);
-        enter_scope(); 
+        enter_scope(); /* Escopo 1: Parâmetros */
     }
-    params ')' BLOCK_BEGIN declarations stmt_list BLOCK_END
+    params ')' block_start declarations stmt_list BLOCK_END
     {
-        ASTNode *body = $9;
+        /* block_start criou o Escopo 2 (Corpo) */
+        
+        ASTNode *body = $9; /* stmt_list ($9) */
+        
+        /* Concatena declarations ($8) com stmt_list ($9) */
         if ($8 != NULL) body = create_seq($8, $9);
+        
         $$ = create_func_def($2, $1, $5, body);
-        exit_scope();
+        
+        exit_scope(); /* Fecha Escopo 2 (Corpo) */
+        exit_scope(); /* Fecha Escopo 1 (Parâmetros) */
+        
         free($2);
     }
   ;
@@ -240,6 +254,11 @@ param:
     }
     ;
 
+/* Regra Auxiliar para resolver conflito Shift/Reduce e abrir escopo */
+block_start:
+    BLOCK_BEGIN { enter_scope(); }
+  ;
+
 stmt_list:
     stmt_list stmt { $$ = create_seq($1, $2); }
   | stmt { $$ = $1; }
@@ -252,22 +271,49 @@ stmt:
   | FOR ID ASSIGN expr TO expr DO stmt      
     { 
         Symbol *s = lookup_symbol($2);
-        if(!s) { printf("Erro: %s nao existe\n", $2); exit(1); }
-        if(s->kind != KIND_SCALAR) { printf("Erro: %s nao escalar\n", $2); exit(1); }
+        if(!s) { 
+            printf("ERRO (Linha %d): Variavel '%s' nao existe.\n", yylineno, $2); 
+            exit(1); 
+        }
+        if(s->kind != KIND_SCALAR) { 
+            printf("ERRO (Linha %d): '%s' nao e variavel escalar (iterador).\n", yylineno, $2); 
+            exit(1); 
+        }
         $$ = create_for($2, $4, $6, $8); free($2); 
     }
-  | BLOCK_BEGIN stmt_list BLOCK_END 
+  | block_start stmt_list BLOCK_END 
     { 
+        /* block_start abriu escopo, aqui fechamos */
+        exit_scope();
+
         ASTNode *blk = create_node(NODE_BLOCK);
-        blk->left = $2;
+        blk->left = $2; 
         $$ = blk; 
+    }
+  /* Chamada de procedimento (Comando) - Void ou ignorando retorno */
+  | ID '(' args ')' SEMI
+    {
+        Symbol *sym = lookup_symbol($1);
+        if (!sym || sym->kind != KIND_FUNCTION) { 
+            printf("ERRO (Linha %d): '%s' nao e uma funcao.\n", yylineno, $1); 
+            exit(1); 
+        }
+        
+        ASTNode *node = create_node(NODE_PROC_CALL); 
+        node->strValue = $1;
+        node->left = $3; /* args */
+        $$ = node;
     }
   | ID ASSIGN expr SEMI
     {
         Symbol *sym = lookup_symbol($1);
-        if (!sym) { printf("ERRO: '%s' nao declarado.\n", $1); exit(1); }
+        if (!sym) { 
+            printf("ERRO (Linha %d): Variavel '%s' nao declarada.\n", yylineno, $1); 
+            exit(1); 
+        }
         if (sym->kind != KIND_SCALAR && sym->kind != KIND_UNIT) { 
-             printf("ERRO: '%s' nao escalar/unit.\n", $1); exit(1); 
+             printf("ERRO (Linha %d): '%s' nao e variavel escalar ou unit.\n", yylineno, $1); 
+             exit(1); 
         }
         $$ = create_assign($1, $3);
         free($1);
@@ -275,14 +321,20 @@ stmt:
   | ID '[' expr ']' ASSIGN expr SEMI
     {
         Symbol *sym = lookup_symbol($1);
-        if (!sym || sym->kind != KIND_ARRAY) { printf("ERRO: '%s' nao array.\n", $1); exit(1); }
+        if (!sym || sym->kind != KIND_ARRAY) { 
+            printf("ERRO (Linha %d): '%s' nao e um array.\n", yylineno, $1); 
+            exit(1); 
+        }
         $$ = create_assign_idx($1, $3, NULL, $6);
         free($1);
     }
   | ID '[' expr ']' '[' expr ']' ASSIGN expr SEMI
     {
         Symbol *sym = lookup_symbol($1);
-        if (!sym || sym->kind != KIND_MATRIX) { printf("ERRO: '%s' nao matriz.\n", $1); exit(1); }
+        if (!sym || sym->kind != KIND_MATRIX) { 
+            printf("ERRO (Linha %d): '%s' nao e uma matriz.\n", yylineno, $1); 
+            exit(1); 
+        }
         $$ = create_assign_idx($1, $3, $6, $9);
         free($1);
     }
@@ -290,24 +342,42 @@ stmt:
   | READ '(' ID ')' SEMI 
     {
         Symbol *sym = lookup_symbol($3);
-        if (!sym) { printf("ERRO: Var '%s' nao declarada.\n", $3); exit(1); }
-        if (sym->kind != KIND_SCALAR) { printf("ERRO: '%s' deve ser variavel simples.\n", $3); exit(1); }
+        if (!sym) { 
+            printf("ERRO (Linha %d): Var '%s' nao declarada.\n", yylineno, $3); 
+            exit(1); 
+        }
+        if (sym->kind != KIND_SCALAR) { 
+            printf("ERRO (Linha %d): '%s' deve ser variavel simples para leitura direta.\n", yylineno, $3); 
+            exit(1); 
+        }
         $$ = create_read($3, sym->type);
         free($3);
     }
   | READ '(' ID '[' expr ']' ')' SEMI 
     {
         Symbol *sym = lookup_symbol($3);
-        if (!sym) { printf("ERRO: Array '%s' nao declarado.\n", $3); exit(1); }
-        if (sym->kind != KIND_ARRAY) { printf("ERRO: '%s' nao e array.\n", $3); exit(1); }
+        if (!sym) { 
+            printf("ERRO (Linha %d): Array '%s' nao declarado.\n", yylineno, $3); 
+            exit(1); 
+        }
+        if (sym->kind != KIND_ARRAY) { 
+            printf("ERRO (Linha %d): '%s' nao e um array.\n", yylineno, $3); 
+            exit(1); 
+        }
         $$ = create_read_array($3, $5, sym->type);
         free($3);
     }
   | READ '(' ID '[' expr ']' '[' expr ']' ')' SEMI 
     {
         Symbol *sym = lookup_symbol($3);
-        if (!sym) { printf("ERRO: Matriz '%s' nao declarada.\n", $3); exit(1); }
-        if (sym->kind != KIND_MATRIX) { printf("ERRO: '%s' nao e matriz.\n", $3); exit(1); }
+        if (!sym) { 
+            printf("ERRO (Linha %d): Matriz '%s' nao declarada.\n", yylineno, $3); 
+            exit(1); 
+        }
+        if (sym->kind != KIND_MATRIX) { 
+            printf("ERRO (Linha %d): '%s' nao e uma matriz.\n", yylineno, $3); 
+            exit(1); 
+        }
         $$ = create_read_matrix($3, $5, $8, sym->type);
         free($3);
     }
@@ -326,13 +396,13 @@ stmt:
   ;
 
 expr:
-    expr LESS_THAN expr    { $$ = create_bin_op("<", $1, $3); $$->dataType = TYPE_INT; }
-  | expr GREATER_THAN expr { $$ = create_bin_op(">", $1, $3); $$->dataType = TYPE_INT; }
-  | expr LESS_THAN_OR_EQUALS expr { $$ = create_bin_op("<=", $1, $3); $$->dataType = TYPE_INT; }
+    expr LESS_THAN expr            { $$ = create_bin_op("<", $1, $3); $$->dataType = TYPE_INT; }
+  | expr GREATER_THAN expr         { $$ = create_bin_op(">", $1, $3); $$->dataType = TYPE_INT; }
+  | expr LESS_THAN_OR_EQUALS expr  { $$ = create_bin_op("<=", $1, $3); $$->dataType = TYPE_INT; }
   | expr GREATER_THAN_OR_EQUALS expr { $$ = create_bin_op(">=", $1, $3); $$->dataType = TYPE_INT; }
-  | expr EQUALS expr { $$ = create_bin_op("==", $1, $3); $$->dataType = TYPE_INT; }
-  | expr AND expr    { $$ = create_bin_op("&&", $1, $3); $$->dataType = TYPE_INT; }
-  | expr OR expr     { $$ = create_bin_op("||", $1, $3); $$->dataType = TYPE_INT; }
+  | expr EQUALS expr               { $$ = create_bin_op("==", $1, $3); $$->dataType = TYPE_INT; }
+  | expr AND expr                  { $$ = create_bin_op("&&", $1, $3); $$->dataType = TYPE_INT; }
+  | expr OR expr                   { $$ = create_bin_op("||", $1, $3); $$->dataType = TYPE_INT; }
   | expr POWER expr  { 
       $$ = create_bin_op("^", $1, $3);
       if ($1->dataType == TYPE_FLOAT || $3->dataType == TYPE_FLOAT)
@@ -343,7 +413,8 @@ expr:
   | '(' expr ')' { $$ = $2; }
   | expr '+' expr 
     { 
-        if ($1->dataType != $3->dataType) printf("ERRO: Tipos incompativeis soma\n");
+        if ($1->dataType != $3->dataType) 
+            printf("AVISO (Linha %d): Soma de tipos diferentes (Implicito).\n", yylineno);
         $$ = create_bin_op("+", $1, $3); $$->dataType = $1->dataType;
     }
   | expr '-' expr { $$ = create_bin_op("-", $1, $3); $$->dataType = TYPE_INT; }
@@ -352,7 +423,7 @@ expr:
   | STRING_LITERAL 
     { 
         $$ = create_node(NODE_CONST);
-        $$->strValue = $1; 
+        $$->strValue = $1;
         $$->dataType = TYPE_STRING;
     }
   | FLOAT_LITERAL 
@@ -369,17 +440,27 @@ expr:
   | ID 
     {
         Symbol *sym = lookup_symbol($1);
-        if (!sym) { printf("ERRO: '%s' sumiu?\n", $1); exit(1); }
-        if (sym->kind != KIND_SCALAR && sym->kind != KIND_UNIT) { printf("ERRO: '%s' e array, use []\n", $1); exit(1); }
+        if (!sym) { 
+            printf("ERRO (Linha %d): Variavel '%s' nao encontrada.\n", yylineno, $1); 
+            exit(1); 
+        }
+        if (sym->kind != KIND_SCALAR && sym->kind != KIND_UNIT) { 
+            printf("ERRO (Linha %d): '%s' e array/matriz, use [] para acessar.\n", yylineno, $1); 
+            exit(1); 
+        }
         $$ = create_var($1);
         $$->dataType = sym->type;
         if (sym->kind == KIND_UNIT) $$->kind = KIND_UNIT;
         free($1);
     }
+  /* Chamada de funcao dentro de expressao (x = f()) - Retorna Valor */
   | ID '(' args ')'
     {
         Symbol *sym = lookup_symbol($1);
-        if (!sym || sym->kind != KIND_FUNCTION) { printf("ERRO: '%s' nao e funcao.\n", $1); exit(1); }
+        if (!sym || sym->kind != KIND_FUNCTION) { 
+            printf("ERRO (Linha %d): '%s' nao e funcao.\n", yylineno, $1); 
+            exit(1); 
+        }
         $$ = create_func_call($1, $3);
         $$->dataType = sym->type;
         free($1);
@@ -387,7 +468,10 @@ expr:
   | ID '[' expr ']'
     {
         Symbol *sym = lookup_symbol($1);
-        if (!sym || sym->kind != KIND_ARRAY) { printf("ERRO: '%s' nao array.\n", $1); exit(1); }
+        if (!sym || sym->kind != KIND_ARRAY) { 
+            printf("ERRO (Linha %d): '%s' nao e um array.\n", yylineno, $1); 
+            exit(1); 
+        }
         $$ = create_array_access($1, $3, NULL);
         $$->dataType = sym->type; 
         free($1);
@@ -395,7 +479,10 @@ expr:
   | ID '[' expr ']' '[' expr ']'
     {
         Symbol *sym = lookup_symbol($1);
-        if (!sym || sym->kind != KIND_MATRIX) { printf("ERRO: '%s' nao matriz.\n", $1); exit(1); }
+        if (!sym || sym->kind != KIND_MATRIX) { 
+            printf("ERRO (Linha %d): '%s' nao e uma matriz.\n", yylineno, $1); 
+            exit(1); 
+        }
         $$ = create_array_access($1, $3, $6);
         $$->dataType = sym->type; 
         free($1);
@@ -415,7 +502,7 @@ arg_list:
 %%
 
 void yyerror(char *msg) {
-    fprintf(stderr, "Erro de sintaxe: %s\n", msg);
+    fprintf(stderr, "Erro de sintaxe na linha %d: %s\n", yylineno, msg);
 }
 
 extern FILE *yyin;

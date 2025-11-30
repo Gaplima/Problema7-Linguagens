@@ -224,7 +224,11 @@ void gen_code(ASTNode *node) {
             }
             break;
 
-        /* codegen.c */
+        case NODE_PROC_CALL:
+            fprintf(f, "%s(", node->strValue);
+            gen_code(node->left);
+            fprintf(f, ");\n"); /* Nota o ponto e vírgula e quebra de linha aqui */
+            break;
 
         case NODE_READ: {
             // 1. Define o especificador de formato (%d ou %f)
