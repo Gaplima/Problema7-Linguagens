@@ -44,8 +44,12 @@ void gen_code(ASTNode *node) {
         case NODE_DECL:
              if (node->kind == KIND_UNIT) {
                 fprintf(f, "struct %s %s;\n", node->unitName, node->strValue);
-            } else {
-                /* IMPRESSÃO CORRETA */
+            } else if (node->dataType == TYPE_STRING && node->kind == KIND_SCALAR) {
+				// Transforma 'string s;' em 'char s[256];' para alocar memória
+				fprintf(f, "char %s[256];\n", node->strValue);
+			}
+			else {
+                //impressão padrão para int, float...
                 fprintf(f, "%s %s", map_type(node->dataType), node->strValue);
                 
                 if (node->kind == KIND_ARRAY) {
@@ -244,7 +248,13 @@ void gen_code(ASTNode *node) {
             else if (node->dataType == TYPE_STRING) fmt = "%255s"; // Simplificado
             
             // 2. Inicia o scanf: scanf("%d", &nome
-            fprintf(f, "scanf(\"%s\", &%s", fmt, node->strValue);
+            if (node->dataType == TYPE_STRING) {
+				// Strings (char arrays) não levam '&' no scanf
+				fprintf(f, "scanf(\"%s\", %s", fmt, node->strValue);
+			} else {
+				// Int e Float precisam do '&'
+				fprintf(f, "scanf(\"%s\", &%s", fmt, node->strValue);
+			}
             
             // 3. Se tiver indices, imprime eles: [i] ou [i][j]
             if (node->kind == KIND_ARRAY) {
@@ -329,6 +339,7 @@ void generate_c_code(ASTNode *root, char *input_filename) {
     fprintf(f, "#include <stdio.h>\n");
     fprintf(f, "#include <stdlib.h>\n");
     fprintf(f, "#include <math.h>\n");
+	fprintf(f, "#include <string.h>\n");
     fprintf(f, "\n// Codigo gerado pelo compilador\n\n");
 
     if (root->type == NODE_SEQ) {
