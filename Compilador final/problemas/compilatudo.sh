@@ -1,0 +1,1 @@
+for f in *.c; do gcc "$f" -o "${f%.c}" -lm && echo "SUCESSO: Executável criado: ./$f"; done #compila todos os .c

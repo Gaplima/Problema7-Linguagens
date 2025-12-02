@@ -1,0 +1,161 @@
+/* =================================================================
+   PROBLEMA 4: Numeros Racionais
+   Estrutura: rational_r
+   Regras: Uso estrito de GOTO para controle de fluxo.
+   ================================================================= */
+
+/* Definicao do Tipo (Campos inteiros) */
+unit rational_r begin
+    int num;
+    int den;
+end
+
+/* --- SUBPROGRAMA A: CONSTRUTOR --- */
+unit rational_r criar(int a, int b) begin
+    unit rational_r r;
+    r.num := a;
+    r.den := b;
+    return r;
+end
+
+/* --- SUBPROGRAMA B: IGUALDADE --- */
+/* Retorna 1 se verdadeiro, 0 se falso.
+   Logica: a/b == c/d se (a*d) == (c*b) */
+int eh_igual(unit rational_r r1, unit rational_r r2) begin
+    int val1;
+    int val2;
+    
+    val1 := r1.num * r2.den;
+    val2 := r2.num * r1.den;
+    
+    /* Regra estrita: IF so pode ter GOTO */
+    if val1 == val2 then goto RET_TRUE;
+    
+    return 0;
+
+RET_TRUE:
+    return 1;
+end
+
+/* --- SUBPROGRAMAS C: OPERACOES --- */
+
+/* 1. SOMA: (a/b) + (c/d) = (ad + cb) / bd */
+unit rational_r somar(unit rational_r r1, unit rational_r r2) begin
+    unit rational_r res;
+    int termo1;
+    int termo2;
+    
+    termo1 := r1.num * r2.den;
+    termo2 := r2.num * r1.den;
+    
+    res.num := termo1 + termo2;
+    res.den := r1.den * r2.den;
+    return res;
+end
+
+/* 2. SUBTRACAO: (a/b) - (c/d) = (ad - cb) / bd */
+unit rational_r subtrair(unit rational_r r1, unit rational_r r2) begin
+    unit rational_r res;
+    int termo1;
+    int termo2;
+    
+    termo1 := r1.num * r2.den;
+    termo2 := r2.num * r1.den;
+    
+    res.num := termo1 - termo2;
+    res.den := r1.den * r2.den;
+    return res;
+end
+
+/* 3. MULTIPLICACAO: (a/b) * (c/d) = (ac) / (bd) */
+unit rational_r multiplicar(unit rational_r r1, unit rational_r r2) begin
+    unit rational_r res;
+    res.num := r1.num * r2.num;
+    res.den := r1.den * r2.den;
+    return res;
+end
+
+/* 4. DIVISAO: (a/b) / (c/d) = (ad) / (bc) */
+unit rational_r dividir(unit rational_r r1, unit rational_r r2) begin
+    unit rational_r res;
+    res.num := r1.num * r2.den;
+    res.den := r1.den * r2.num;
+    return res;
+end
+
+/* 5. NEGACAO: -(a/b) = (-a)/b */
+unit rational_r negar(unit rational_r r1) begin
+    unit rational_r res;
+    res.num := 0 - r1.num;
+    res.den := r1.den;
+    return res;
+end
+
+/* 6. INVERSO: 1/(a/b) = b/a */
+unit rational_r inverter(unit rational_r r1) begin
+    unit rational_r res;
+    res.num := r1.den;
+    res.den := r1.num;
+    return res;
+end
+
+/* --- AUXILIAR PARA IMPRESSAO --- */
+int imprimir(unit rational_r r) begin
+    echo("   Numerador:");
+    echo(r.num);
+    echo("   Denominador:");
+    echo(r.den);
+    echo("----------------");
+    return 0;
+end
+
+/* =================================================================
+   PROGRAMA PRINCIPAL (MAIN)
+   ================================================================= */
+unit rational_r rA;
+unit rational_r rB;
+unit rational_r rRes;
+int igual;
+
+echo("=== PROBLEMA 4: TESTE DE RACIONAIS ===");
+
+/* Criacao */
+echo("Criando Racional A (1/2):");
+rA := criar(1, 2);
+imprimir(rA);
+
+echo("Criando Racional B (3/4):");
+rB := criar(3, 4);
+imprimir(rB);
+
+/* Teste de Igualdade */
+echo("Teste: A e igual a B? (0=Nao, 1=Sim)");
+igual := eh_igual(rA, rB);
+echo(igual);
+
+/* Operacoes */
+echo("1. SOMA (1/2 + 3/4 = 10/8):");
+rRes := somar(rA, rB);
+imprimir(rRes);
+
+echo("2. SUBTRACAO (1/2 - 3/4 = -2/8):");
+rRes := subtrair(rA, rB);
+imprimir(rRes);
+
+echo("3. MULTIPLICACAO (1/2 * 3/4 = 3/8):");
+rRes := multiplicar(rA, rB);
+imprimir(rRes);
+
+echo("4. DIVISAO (1/2 / 3/4 = 4/6):");
+rRes := dividir(rA, rB);
+imprimir(rRes);
+
+echo("5. INVERSO DE A (2/1):");
+rRes := inverter(rA);
+imprimir(rRes);
+
+echo("6. NEGACAO DE B (-3/4):");
+rRes := negar(rB);
+imprimir(rRes);
+
+echo("=== FIM DO PROGRAMA ===");

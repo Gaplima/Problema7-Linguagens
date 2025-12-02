@@ -1,0 +1,87 @@
+/* ==========================================================
+   PROBLEMA 5: MDC Recursivo (Passagem por Referencia)
+   ========================================================== */
+
+/* Subprograma MDC
+   n, m: Valor (Inteiros)
+   r: Referencia (Simulado via Array)
+*/
+int mde(int n, int m, arr[] r) begin
+    int resto;
+    int div_int;
+    int mod_res;
+
+    /* --- REGRA 1: Se n for divisor de m --- */
+    /* Calculo manual de (m % n): m - n * (m / n) */
+    div_int := m / n;
+    mod_res := m - (n * div_int);
+    
+    /* Se mod_res == 0, n divide m */
+    if mod_res == 0 then goto N_IS_GCD;
+
+    /* --- REGRA 2: Se m for divisor de n --- */
+    /* Calculo manual de (n % m) */
+    div_int := n / m;
+    mod_res := n - (m * div_int);
+    
+    if mod_res == 0 then goto M_IS_GCD;
+
+    /* --- REGRA 3: Recursao --- */
+    /* Se n nao divide m, e m > n... */
+    if m > n then goto RECURSE;
+
+    /* Caso implicito: n > m (Inverte a ordem para garantir convergencia) 
+       Chama mde(m, n, r)
+    */
+    mde(m, n, r);
+    return 0;
+
+RECURSE:
+    /* Maior divisor comum de m e n e tambem o MDC de n e (m % n) */
+    /* resto = m % n */
+    div_int := m / n;
+    resto := m - (n * div_int);
+    
+    /* Chamada recursiva passando r */
+    mde(n, resto, r);
+    return 0;
+
+N_IS_GCD:
+    /* Escreve na referencia r */
+    r[0] := n;
+    return 0;
+
+M_IS_GCD:
+    /* Escreve na referencia r */
+    r[0] := m;
+    return 0;
+end
+
+/* --- PROGRAMA PRINCIPAL --- */
+int n;
+int m;
+/* Array de tamanho 1 para simular variavel por referencia */
+int res := [1]; 
+
+echo("=== CALCULO DE MDC ===");
+echo("Digite n (estritamente positivo):");
+read(n);
+echo("Digite m (estritamente positivo):");
+read(m);
+
+/* Valida entrada basica */
+if n <= 0 then goto ERRO;
+if m <= 0 then goto ERRO;
+
+/* Chama o subprograma passando o array 'res' */
+mde(n, m, res);
+
+echo("O MDC entre n e m e:");
+/* Le o valor escrito por referencia */
+echo(res[0]);
+goto FIM;
+
+ERRO:
+    echo("Erro: Os numeros devem ser positivos.");
+
+FIM:

@@ -33,6 +33,8 @@
 "then"                { return(THEN); }
 "else"                { return(ELSE); }
 "elif"                { return(ELIF); }
+"goto"                { return(GOTO); }
+":"                   { return(COLON); }
 
 ";"                   { return(SEMI); }
 ":="                  { return(ASSIGN); }

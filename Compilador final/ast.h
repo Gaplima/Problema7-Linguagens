@@ -14,6 +14,8 @@ typedef enum {
     NODE_IF,
     NODE_WHILE,
     NODE_FOR,
+	NODE_GOTO,   
+    NODE_LABEL,
     NODE_DECL,
     NODE_BLOCK,
     NODE_BIN_OP,
@@ -57,6 +59,8 @@ ASTNode* create_assign(char *varName, ASTNode *expr);
 ASTNode* create_bin_op(char *op, ASTNode *left, ASTNode *right);
 ASTNode* create_if(ASTNode *cond, ASTNode *thenStmt, ASTNode *elseStmt);
 ASTNode* create_while(ASTNode *cond, ASTNode *body);
+ASTNode* create_goto(char *labelName);
+ASTNode* create_label(char *labelName);
 ASTNode* create_seq(ASTNode *stmt1, ASTNode *stmt2);
 ASTNode* create_print(ASTNode *args);
 ASTNode* create_read(char *varName, int type);

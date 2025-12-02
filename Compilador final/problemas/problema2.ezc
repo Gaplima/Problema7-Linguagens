@@ -1,0 +1,64 @@
+/* Declaracao de variaveis */
+int n;
+int c1;
+int c2;
+int c3;
+int c4;
+
+/* Inicializacao */
+c1 := 0;
+c2 := 0;
+c3 := 0;
+c4 := 0;
+
+echo("Digite numeros (negativo para encerrar):");
+
+INICIO_LOOP:
+    read(n);
+
+    /* Regra 1: Se negativo, vai para o fim */
+    if n < 0 then goto FIM;
+
+    /* --- Intervalo [0, 25] --- */
+    /* Como sabemos que n >= 0 (pois nao pulou para o fim), 
+       basta testar se e maior que 25.
+       Se for maior que 25, NAO esta neste intervalo -> Pula para proximo teste */
+    if n > 25 then goto TESTE_2;
+    
+    /* Se chegou aqui, e porque n <= 25. Contabiliza e reinicia */
+    c1 := c1 + 1;
+    goto INICIO_LOOP;
+
+TESTE_2:
+    /* --- Intervalo [26, 50] --- */
+    /* Ja sabemos que n > 25. Se for maior que 50, pula */
+    if n > 50 then goto TESTE_3;
+    
+    c2 := c2 + 1;
+    goto INICIO_LOOP;
+
+TESTE_3:
+    /* --- Intervalo [51, 75] --- */
+    /* Ja sabemos que n > 50. Se for maior que 75, pula */
+    if n > 75 then goto TESTE_4;
+    
+    c3 := c3 + 1;
+    goto INICIO_LOOP;
+
+TESTE_4:
+    /* --- Intervalo [76, 100] --- */
+    /* Ja sabemos que n > 75. Se for maior que 100, nao conta e volta */
+    if n > 100 then goto INICIO_LOOP;
+    
+    c4 := c4 + 1;
+    goto INICIO_LOOP;
+
+FIM:
+    echo("Intervalo [0, 25]:");
+    echo(c1);
+    echo("Intervalo [26, 50]:");
+    echo(c2);
+    echo("Intervalo [51, 75]:");
+    echo(c3);
+    echo("Intervalo [76, 100]:");
+    echo(c4);

@@ -1,0 +1,287 @@
+/*
+   PROBLEMA 6: Arvore Binaria de Busca (BST) 
+   Implementacao via Arrays Paralelos (Simulacao de Heap)
+*/
+
+/* --- MEMORIA GLOBAL (HEAP) --- */
+/* Capacidade maxima: 100 nos 
+   CORRECAO: A sintaxe exige := para arrays */
+int key := [100];    /* Valor da chave */
+int left := [100];   /* Indice do filho a esquerda (-1 = NULL) */
+int right := [100];  /* Indice do filho a direita (-1 = NULL) */
+int valid := [100];  /* 0 = livre, 1 = ocupado */
+
+/* Raiz da Arvore (-1 indica arvore vazia) */
+int root;
+
+/* --- FILA PARA BFS (Nivel a Nivel) --- */
+int q_node := [100];
+int q_level := [100];
+int q_head;
+int q_tail;
+
+/* Variaveis Auxiliares Globais */
+int i;
+int found_idx;
+int current_lvl;
+int last_lvl;
+
+/* FUNCAO: INICIALIZAR
+   Limpa a memoria e define a raiz como nula.
+*/
+int init_tree(int dummy) begin
+    root := 0 - 1; /* root = -1 */
+    i := 0;
+
+LOOP_INIT:
+    if i >= 100 then goto END_INIT;
+    valid[i] := 0;
+    left[i] := 0 - 1;
+    right[i] := 0 - 1;
+    i := i + 1;
+    goto LOOP_INIT;
+
+END_INIT:
+    return 0;
+end
+
+/* FUNCAO: ALOCAR NO
+   Encontra o primeiro indice livre nos arrays.
+   Retorna -1 se cheio.
+*/
+int alloc_node(int val) begin
+    int idx;
+    idx := 0;
+
+FIND_FREE:
+    if idx >= 100 then goto FULL;
+    if valid[idx] == 0 then goto FOUND_FREE;
+    idx := idx + 1;
+    goto FIND_FREE;
+
+FOUND_FREE:
+    valid[idx] := 1;
+    key[idx] := val;
+    left[idx] := 0 - 1;
+    right[idx] := 0 - 1;
+    return idx;
+
+FULL:
+    return 0 - 1;
+end
+
+/* OPERACAO A: INSERIR VALOR
+   Insere n na arvore mantendo a propriedade de busca.
+*/
+int insert(int val) begin
+    int new_idx;
+    int curr;
+    int parent;
+    
+    /* 1. Aloca memoria */
+    new_idx := alloc_node(val);
+    if new_idx == 0 - 1 then goto ERR_FULL;
+
+    /* 2. Se arvore vazia, vira raiz */
+    if root == 0 - 1 then goto SET_ROOT;
+
+    /* 3. Navegacao para encontrar posicao */
+    curr := root;
+
+LOOP_SEARCH:
+    /* Se val < chave atual -> vai para esquerda */
+    if val < key[curr] then goto GO_LEFT;
+    
+    /* Se val >= chave atual -> vai para direita */
+    goto GO_RIGHT;
+
+GO_LEFT:
+    if left[curr] == 0 - 1 then goto LINK_LEFT;
+    curr := left[curr];
+    goto LOOP_SEARCH;
+
+GO_RIGHT:
+    if right[curr] == 0 - 1 then goto LINK_RIGHT;
+    curr := right[curr];
+    goto LOOP_SEARCH;
+
+LINK_LEFT:
+    left[curr] := new_idx;
+    return 0;
+
+LINK_RIGHT:
+    right[curr] := new_idx;
+    return 0;
+
+SET_ROOT:
+    root := new_idx;
+    return 0;
+
+ERR_FULL:
+    echo("Erro: Arvore cheia.");
+    return 0;
+end
+
+/* OPERACAO B: MINIMO
+   Vai tudo para a esquerda.*/
+int find_min(int dummy) begin
+    int curr;
+    int lvl;
+    
+    if root == 0 - 1 then goto EMPTY;
+    
+    curr := root;
+    lvl := 0;
+
+LOOP_MIN:
+    if left[curr] == 0 - 1 then goto SHOW_MIN;
+    curr := left[curr];
+    lvl := lvl + 1;
+    goto LOOP_MIN;
+
+SHOW_MIN:
+    echo("--- Minimo Encontrado ---");
+    echo("Valor:");
+    echo(key[curr]);
+    echo("Nivel:");
+    echo(lvl);
+    return 0;
+
+EMPTY:
+    echo("Arvore vazia.");
+    return 0;
+end
+
+/* OPERACAO C: MAXIMO
+   Vai tudo para a direita.
+*/
+int find_max(int dummy) begin
+    int curr;
+    int lvl;
+
+    if root == 0 - 1 then goto EMPTY;
+
+    curr := root;
+    lvl := 0;
+
+LOOP_MAX:
+    if right[curr] == 0 - 1 then goto SHOW_MAX;
+    curr := right[curr];
+    lvl := lvl + 1;
+    goto LOOP_MAX;
+
+SHOW_MAX:
+    echo("--- Maximo Encontrado ---");
+    echo("Valor:");
+    echo(key[curr]);
+    echo("Nivel:");
+    echo(lvl);
+    return 0;
+
+EMPTY:
+    echo("Arvore vazia.");
+    return 0;
+end
+
+/* OPERACAO D: IMPRESSAO NIVEL A NIVEL (BFS)
+   Usa uma fila simulada.*/
+int print_bfs(int dummy) begin
+    int curr;
+    int left_child;
+    int right_child;
+    
+    if root == 0 - 1 then goto EMPTY;
+
+    echo("--- Impressao Nivel a Nivel ---");
+
+    /* Inicializa Fila */
+    q_head := 0;
+    q_tail := 0;
+    
+    /* Enfileira Raiz (Nivel 0) */
+    q_node[q_tail] := root;
+    q_level[q_tail] := 0;
+    q_tail := q_tail + 1;
+    
+    last_lvl := 0 - 1; /* Para controlar quebra de linha visual */
+
+LOOP_BFS:
+    /* Enquanto fila nao vazia (head < tail) */
+    if q_head >= q_tail then goto END_BFS;
+
+    /* Desenfileira */
+    curr := q_node[q_head];
+    current_lvl := q_level[q_head];
+    q_head := q_head + 1;
+
+    /* Verifica mudanca de nivel para imprimir separador */
+    if current_lvl > last_lvl then goto NEW_LINE;
+    goto PRINT_VAL;
+
+NEW_LINE:
+    echo("... Nivel atual ...");
+    echo(current_lvl);
+    last_lvl := current_lvl;
+
+PRINT_VAL:
+    echo(key[curr]);
+
+    /* Enfileira Filho Esquerdo */
+    left_child := left[curr];
+    if left_child == 0 - 1 then goto TRY_RIGHT;
+    
+    q_node[q_tail] := left_child;
+    q_level[q_tail] := current_lvl + 1;
+    q_tail := q_tail + 1;
+
+TRY_RIGHT:
+    /* Enfileira Filho Direito */
+    right_child := right[curr];
+    if right_child == 0 - 1 then goto LOOP_BFS;
+
+    q_node[q_tail] := right_child;
+    q_level[q_tail] := current_lvl + 1;
+    q_tail := q_tail + 1;
+
+    goto LOOP_BFS;
+
+END_BFS:
+    echo("--- Fim da Impressao ---");
+    return 0;
+
+EMPTY:
+    echo("Arvore vazia.");
+    return 0;
+end
+
+/* PROGRAMA PRINCIPAL */
+int aux;
+
+/* 1. Inicializa */
+init_tree(0);
+
+echo("=== PROBLEMA 6: ARVORE BINARIA DE BUSCA ===");
+
+/* 2. Insercao de Valores (Exemplo: 50, 30, 20, 40, 70, 60, 80) */
+echo("Inserindo sequencia: 50, 30, 20, 40, 70, 60, 80");
+aux := insert(50);
+aux := insert(30);
+aux := insert(20);
+aux := insert(40);
+aux := insert(70);
+aux := insert(60);
+aux := insert(80);
+
+/* 3. Busca Minimo */
+find_min(0);
+
+/* 4. Busca Maximo */
+find_max(0);
+
+/* 5. Impressao BFS */
+print_bfs(0);
+
+/* Teste Adicional: Inserir mais um nivel */
+echo("Inserindo 10 (Nivel 3)...");
+aux := insert(10);
+print_bfs(0);

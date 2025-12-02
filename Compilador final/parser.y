@@ -15,8 +15,8 @@
   ASTNode *root = NULL;
 
   #ifndef KIND_SCALAR
-    #define KIND_SCALAR 0
     #define KIND_ARRAY  1
+    #define KIND_SCALAR 0
     #define KIND_MATRIX 2
     #define KIND_FUNCTION 3
   #endif
@@ -44,6 +44,7 @@
 %token OP_ADD_ONE OP_SUB_ONE OP_SIZEOF
 %token GREATER_THAN_OR_EQUALS LESS_THAN_OR_EQUALS EQUALS
 %token GREATER_THAN LESS_THAN
+%token GOTO COLON
 
 /* Tipos */
 %token TYPE_INT TYPE_ARRAY TYPE_CHAR TYPE_STRING TYPE_FLOAT
@@ -126,30 +127,6 @@ unit_feature:
         $$ = node;
         free($2); free($3);
     }
-    /* 2. Definição de Função Unit: unit Ponto criar() ... */
-  | UNIT ID ID '(' 
-    { 
-        install_symbol($3, 1000, KIND_FUNCTION, 0, 0);
-        enter_scope(); /* Escopo 1: Parâmetros */
-    }
-    params ')' block_start declarations stmt_list BLOCK_END
-    {
-        /* block_start criou o Escopo 2 (Corpo) */
-        /* params estao no Escopo 1 */
-        
-        ASTNode *body = $10; /* stmt_list ($10) */
-        
-        /* Concatena declarations ($9) com stmt_list ($10) se houver */
-        if ($9 != NULL) body = create_seq($9, $10);
-        
-        $$ = create_func_def($3, 1000, $6, body);
-        $$->unitName = strdup($2); 
-        
-        exit_scope(); /* Fecha Escopo 2 (Corpo) */
-        exit_scope(); /* Fecha Escopo 1 (Parâmetros) */
-        
-        free($2); free($3);
-    }
   ;
 
 declarations:
@@ -209,6 +186,7 @@ type:
   | TYPE_FLOAT  { $$ = TYPE_FLOAT; }
   | TYPE_STRING { $$ = TYPE_STRING; }
   | TYPE_CHAR   { $$ = TYPE_CHAR; }
+  | TYPE_ARRAY  { $$ = TYPE_ARRAY; }
   ;
 
 func_def:
@@ -233,6 +211,26 @@ func_def:
         
         free($2);
     }
+	/* --- NOVO: Opção 2: Retorno do tipo UNIT (Adicione isto) --- */
+  | UNIT ID ID '(' 
+    { 
+        /* $2 = Nome da Unit (ex: rational_r), $3 = Nome da Função */
+        install_symbol($3, 1000, KIND_FUNCTION, 0, 0);
+        enter_scope(); 
+    }
+    params ')' block_start declarations stmt_list BLOCK_END
+    {
+        ASTNode *body = $10;
+        /* Concatena declarações com comandos */
+        if ($9 != NULL) body = create_seq($9, $10);
+        
+        /* Cria a função com tipo 1000 */
+        $$ = create_func_def($3, 1000, $6, body);
+        $$->unitName = strdup($2); /* Guarda o nome da struct retornada */
+        
+        exit_scope(); exit_scope();
+        free($2); free($3);
+    }
   ;
 
 params:
@@ -248,9 +246,25 @@ param_list:
 param:
     type ID
     {
-        install_symbol($2, $1, KIND_SCALAR, 0, 0);
+        /* Se for TYPE_ARRAY, marcamos como KIND_ARRAY para permitir acesso r[0] */
+        int kind = ($1 == TYPE_ARRAY) ? KIND_ARRAY : KIND_SCALAR;
+
+        install_symbol($2, $1, kind, 0, 0);
+
         $$ = create_var($2);
+        $$->dataType = $1; /* IMPORTANTE: Salva o tipo para o Codegen usar */
         free($2);
+    }
+  | UNIT ID ID
+    {
+        /* Ex: unit rational_r r1 */
+        /* $2 = "rational_r", $3 = "r1" */
+        install_symbol($3, 1000, KIND_SCALAR, 0, 0);
+        $$ = create_var($3);
+        $$->dataType = 1000;       /* Marca como tipo Unit/Struct */
+        $$->unitName = strdup($2); /* Salva o nome do tipo (rational_r) */
+        free($2);
+        free($3);
     }
     ;
 
@@ -390,6 +404,18 @@ stmt:
          assign->right = $5;
          $$ = assign;
          free($1); free($3);
+    }
+  | GOTO ID SEMI 
+    { 
+        $$ = create_goto($2); 
+        free($2); 
+    }
+
+  /* 2. Definição de Rótulo: label: */
+  | ID COLON 
+    { 
+        $$ = create_label($1); 
+        free($1); 
     }
   | RETURN expr SEMI { $$ = create_return($2); }
   | SEMI { $$ = NULL; }
@@ -588,16 +614,21 @@ expr:
     {
         Symbol *sym = lookup_symbol($1);
         if (!sym) { 
-            printf("ERRO (Linha %d): Variavel '%s' nao encontrada.\n", yylineno, $1); 
+            printf("ERRO (Linha %d): Variavel '%s' nao encontrada.\n", yylineno, $1);
             exit(1); 
         }
-        if (sym->kind != KIND_SCALAR && sym->kind != KIND_UNIT) { 
-            printf("ERRO (Linha %d): '%s' e array/matriz, use [] para acessar.\n", yylineno, $1); 
+        if (sym->kind == KIND_MATRIX) { 
+            printf("ERRO (Linha %d): '%s' e matriz, use [][] para acessar.\n", yylineno, $1);
             exit(1); 
         }
+
         $$ = create_var($1);
         $$->dataType = sym->type;
         if (sym->kind == KIND_UNIT) $$->kind = KIND_UNIT;
+        
+        /* Adicionamos isso para o CodeGen saber que é um array sendo passado */
+        if (sym->kind == KIND_ARRAY) $$->kind = KIND_ARRAY; 
+
         free($1);
     }
   /* Chamada de funcao dentro de expressao (x = f()) - Retorna Valor */

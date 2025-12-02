@@ -1,0 +1,143 @@
+/* Declaracao das Matrizes (Capacidade Maxima 10x10) */
+int A := [10][10];
+int B := [10][10];
+int R := [10][10];
+int ra; int ca;
+int rb; int cb;
+int i; int j; int k;
+int acc;
+
+/* --- LEITURA DA MATRIZ A --- */
+echo("Digite linhas e colunas de A:");
+read(ra);
+read(ca);
+
+echo("Digite os elementos de A:");
+i := 0;
+
+READ_A_ROW:
+    if i >= ra then goto READ_A_END;
+    j := 0;
+
+    READ_A_COL:
+        if j >= ca then goto READ_A_NEXT_ROW;
+        read(A[i][j]);
+        j := j + 1;
+        goto READ_A_COL;
+
+    READ_A_NEXT_ROW:
+        i := i + 1;
+        goto READ_A_ROW;
+
+READ_A_END:
+
+/* --- LEITURA DA MATRIZ B --- */
+echo("Digite linhas e colunas de B:");
+read(rb);
+read(cb);
+
+echo("Digite os elementos de B:");
+i := 0;
+
+READ_B_ROW:
+    if i >= rb then goto READ_B_END;
+    j := 0;
+
+    READ_B_COL:
+        if j >= cb then goto READ_B_NEXT_ROW;
+        read(B[i][j]);
+        j := j + 1;
+        goto READ_B_COL;
+
+    READ_B_NEXT_ROW:
+        i := i + 1;
+        goto READ_B_ROW;
+
+READ_B_END:
+
+
+/* ==========================================
+   OPERACAO 1: SOMA (A + B)
+   ========================================== */
+   
+/* Se as linhas forem iguais, verifica colunas. Se nao, erro. */
+if ra == rb then goto CHECK_COL_SUM;
+goto SOMA_IMPOSSIVEL;
+
+CHECK_COL_SUM:
+if ca == cb then goto CALC_SOMA;
+goto SOMA_IMPOSSIVEL;
+
+CALC_SOMA:
+    echo("--- Resultado da Soma ---");
+    i := 0;
+
+    SUM_ROW_LOOP:
+        if i >= ra then goto FIM_SOMA_CALC;
+        j := 0;
+        
+        SUM_COL_LOOP:
+            if j >= ca then goto SUM_NEXT_ROW;
+            
+            R[i][j] := A[i][j] + B[i][j];
+            echo(R[i][j]);
+            
+            j := j + 1;
+            goto SUM_COL_LOOP;
+            
+        SUM_NEXT_ROW:
+            i := i + 1;
+            goto SUM_ROW_LOOP;
+
+SOMA_IMPOSSIVEL:
+    echo("Soma impossivel: Dimensoes diferentes.");
+    goto FIM_SOMA_CALC;
+
+FIM_SOMA_CALC:
+
+
+/* ==========================================
+   OPERACAO 2: PRODUTO (A * B)
+   ========================================== */
+
+/* Colunas de A devem ser iguais as Linhas de B */
+if ca == rb then goto CALC_PROD;
+goto PROD_IMPOSSIVEL;
+
+CALC_PROD:
+    echo("--- Resultado do Produto ---");
+    
+    i := 0;
+    PROD_I_LOOP:
+        if i >= ra then goto FIM_PROD_CALC;
+        
+        j := 0;
+        PROD_J_LOOP:
+            if j >= cb then goto PROD_NEXT_I;
+            
+            acc := 0;
+            k := 0;
+            
+            PROD_K_LOOP:
+                if k >= ca then goto PROD_STORE;
+                
+                acc := acc + A[i][k] * B[k][j];
+                k := k + 1;
+                goto PROD_K_LOOP;
+            
+            PROD_STORE:
+                R[i][j] := acc;
+                echo(R[i][j]);
+                
+                j := j + 1;
+                goto PROD_J_LOOP;
+        
+        PROD_NEXT_I:
+            i := i + 1;
+            goto PROD_I_LOOP;
+
+PROD_IMPOSSIVEL:
+    echo("Produto impossivel: Colunas de A != Linhas de B.");
+
+FIM_PROD_CALC:
+    /* Fim do programa */
